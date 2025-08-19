@@ -1,1514 +1,187 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
+    <title>CryptoCash Admin Panel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TapTak</title>
-
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
     <style>
-        /* --- Basic Reset & Body --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            width: 100%;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            color: #333;
-            background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
-        }
-
-        /* --- Loading Overlay --- */
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #f0f2f5 url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23dce4ec" fill-opacity="0.4"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.8s ease-out, visibility 0s linear 0.8s;
-            opacity: 1;
-            visibility: visible;
-        }
-        #loading-overlay.hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
-
-        .triple-spinner-loader {
-            width: 80px;
-            height: 80px;
-            position: relative;
-            margin-bottom: 30px;
-        }
-        .triple-spinner-loader div {
-            box-sizing: border-box;
-            display: block;
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 5px solid transparent;
-            animation: tripleSpinnerAnimation 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-        }
-        .triple-spinner-loader div:nth-child(1) { border-top-color: #3498db; animation-delay: -0.45s; }
-        .triple-spinner-loader div:nth-child(2) { border-top-color: #e74c3c; animation-delay: -0.3s; }
-        .triple-spinner-loader div:nth-child(3) { border-top-color: #f1c40f; animation-delay: -0.15s; }
-        @keyframes tripleSpinnerAnimation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        #loading-overlay p {
-            font-size: 1.4em;
-            color: #334155;
-            font-weight: 500;
-            letter-spacing: 0.8px;
-            animation: pulseTextLoading 1.8s infinite alternate ease-in-out;
-        }
-        @keyframes pulseTextLoading { from { opacity: 0.7; transform: scale(1); } to { opacity: 1; transform: scale(1.05); } }
-
-        /* Login Page Style, General Button Styles, etc. (অপরিবর্তিত) */
-        #auth-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background-color: transparent; }
-        .auth-form { background: #fff; padding: 30px 25px; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); width: 100%; max-width: 380px; text-align: center; }
-        #forgot-password-form { display: none; }
-        .auth-form h2 { margin-bottom: 25px; color: #2c3e50; font-weight: 600; font-size: 1.7em; }
-        .auth-form .form-group { margin-bottom: 18px; text-align: left; position: relative; }
-        .auth-form label { display: block; margin-bottom: 6px; font-weight: 500; color: #555; font-size: 0.9em; }
-        .auth-form input[type="email"],
-        .auth-form input[type="password"],
-        .auth-form input[type="text"],
-        .auth-form select {
-            width: 100%; padding: 12px 14px; border: 1px solid #dce4ec; border-radius: 8px; font-size: 1em; box-sizing: border-box; transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .auth-form input[type="password"] { padding-right: 40px; }
-        .auth-form select {
-             appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23555%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 1rem center; background-size: 0.65em auto; padding-right: 2.5rem; cursor: pointer;
-        }
-        .auth-form input:focus, .auth-form select:focus { border-color: #1e90ff; outline: none; box-shadow: 0 0 0 0.2rem rgba(30, 144, 255, 0.25); }
-        .password-toggle-icon { position: absolute; top: calc(50% + 10px); right: 12px; transform: translateY(-50%); cursor: pointer; color: #999; font-size: 1.1em; }
-        .password-toggle-icon:hover { color: #333; }
-
-        .btn-primary, .auth-form button.btn-login, #submitReferralCodeBtn {
-            width: 100%; padding: 12px; border: none; border-radius: 8px; background-color: #1e90ff; color: white; font-size: 1.05em; font-weight: 500; cursor: pointer; transition: background-color 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .btn-primary:hover, .auth-form button.btn-login:hover, #submitReferralCodeBtn:hover { background-color: #1c86ee; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(30,144,255,0.2); }
-        .btn-primary:active, .auth-form button.btn-login:active, #submitReferralCodeBtn:active { transform: translateY(0px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .btn-primary:disabled, .auth-form button.btn-login:disabled, #submitReferralCodeBtn:disabled, .earn-btn:disabled {
-            background-color: #e0e0e0 !important; border-color: #d0d0d0 !important; color: #999 !important; cursor: not-allowed; transform: none !important; box-shadow: none !important;
-        }
-
-        .auth-toggle-link { margin-top: 20px; font-size: 0.95em; color: #555; }
-        .auth-toggle-link a { color: #1e90ff; text-decoration: none; font-weight: 500; cursor: pointer;}
-        .auth-toggle-link a:hover { text-decoration: underline; }
-        .forgot-password-link { text-align: right; font-size: 0.9em; margin-top: 5px; margin-bottom: 15px; }
-        .forgot-password-link a { color: #6c757d; text-decoration: none; cursor: pointer; }
-        .forgot-password-link a:hover { color: #1e90ff; text-decoration: underline; }
-        #googleSignInBtn, #googleSignUpBtn {
-            background-color: #fff; color: #444; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; border: 1px solid #dce4ec; width: 100%; padding: 11px; border-radius: 8px; font-size: 1em; font-weight: 500; transition: background-color 0.3s, box-shadow 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        #googleSignInBtn:hover, #googleSignUpBtn:hover { background-color: #f8f9fa; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
-        #googleSignInBtn svg, #googleSignUpBtn svg { width: 18px; height: 18px; }
-        .auth-separator { text-align: center; border-bottom: 1px solid #e0e0e0; line-height: 0.1em; margin: 20px 0; }
-        .auth-separator span { background: #fff; padding: 0 15px; color: #aaa; font-size: 0.9em;}
-        #auth-message-global { margin-top: 20px; font-weight: bold; min-height: 20px; text-align: center; display: none; }
-        .message-area { min-height: 45px; margin-top: 15px; font-weight: 500; font-size: 0.95em; display: none; }
-        .error-message { color: #e74c3c; background-color: #fadbd8; border: 1px solid #f1c4c0; padding: 12px; border-radius: 6px; margin: 10px 0; text-align: center; display: block; }
-        .success-message { color: #1e8449; background-color: #d4efdf; border: 1px solid #a9dfbf; padding: 12px; border-radius: 6px; margin: 10px 0; text-align: center; display: block; }
-        .info-message { color: #2980b9; background-color: #ebf5fb; border: 1px solid #aed6f1; padding: 12px; border-radius: 6px; margin: 10px 0; text-align: center; display: block; }
-        #resend-verification-container { margin-top: 10px; text-align: center; font-size: 0.9em; }
-        #resend-verification-container a { color: #1e90ff; text-decoration: none; cursor: pointer; }
-        #resend-verification-container a:hover { text-decoration: underline; }
-        .loading-indicator { font-style: italic; color: #666; padding: 15px; text-align: center; }
-        .loading-indicator.global { font-size: 1.1em; font-weight: 500; color: #444; min-height: 40px; display: block; }
-        
-        /* Action Code Handler Form */
-        #action-code-form {
-            display: none; /* Initially hidden */
-        }
-
-        #app-container { display: none; flex-direction: column; min-height: 100vh; width: 100%; background-color: transparent; }
-        header { width: 100%; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); position: sticky; top: 0; z-index: 100; }
-        .header-left { display: flex; align-items: center; gap: 10px; flex-grow: 1; }
-        header img#appLogo { height: 35px; width: 35px; border-radius: 8px; background-color: #e0e0e0; object-fit: cover; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        #welcomeMessageContainer { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 5px;}
-        #welcomeMessage { font-size: 1.1em; color: #333; font-weight: 500; display: none; }
-        .header-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-        #muteButton { background: none; border: none; font-size: 20px; cursor: pointer; color: #555; padding: 5px; line-height: 1; transition: color 0.2s ease, transform 0.2s ease; order: 0; }
-        #muteButton:hover { color: #1e90ff; transform: scale(1.1); }
-        .menu-icon { font-size: 26px; cursor: pointer; padding: 5px 8px; line-height: 1; position: relative; color: #555; order: 2; transition: color 0.2s ease; }
-        .menu-icon:hover { color: #1e90ff; }
-        .dropdown-menu { display: none; position: absolute; top: 55px; right: 10px; background-color: white; min-width: 200px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); z-index: 101; border-radius: 10px; overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(10px) scale(0.95); transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0.25s; }
-        .dropdown-menu.open { display: block; opacity: 1; visibility: visible; transform: translateY(0) scale(1); transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0s; }
-        .dropdown-menu a { color: #333; padding: 14px 20px; text-decoration: none; display: flex; align-items: center; font-size: 15px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background-color 0.2s ease, color 0.2s ease; font-weight: 500; }
-        .dropdown-menu a i { margin-right: 12px; width: 18px; text-align: center; color: #777; transition: color 0.2s ease; }
-        .dropdown-menu a:last-child { border-bottom: none; }
-        .dropdown-menu a:hover { background-color: #f5f7fa; color: #1e90ff; }
-        .dropdown-menu a:hover i { color: #1e90ff; }
-        #logoutButton { color: #e74c3c; }
-        #logoutButton:hover { background-color: #ff6b6b1a; color: #c62828; }
-        #logoutButton:hover i { color: #c62828; }
-        .coin-box { background: #ffeaa7; color: #a0522d; border: 1px solid #f9e79f; padding: 7px 14px; border-radius: 20px; font-weight: 600; white-space: nowrap; order: 1; font-size: 0.95em; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        #coin-balance { font-weight: 700; display: inline-block; }
-        #coin-balance.coin-updated-animation { animation: pulseCoinBalance 0.7s ease-out; }
-        @keyframes pulseCoinBalance { 0% { transform: scale(1); } 30% { transform: scale(1.25); color: #e67e22; } 100% { transform: scale(1); } }
-
-        main { flex-grow: 1; width: 100%; padding: 20px 15px; background: linear-gradient(to top, #e6e9f0 0%, #eef1f5 100%); position: relative; }
-        .page { display: none; flex-direction: column; align-items: center; width: 100%; animation: fadeIn 0.4s ease-out; }
-        .page.active-page { display: flex; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .page-top-bar { width: 100%; max-width: 600px; display: flex; align-items: center; justify-content: flex-start; padding: 10px 5px 5px 5px; margin-bottom: 15px; position: relative; min-height: 40px; }
-        .top-back-btn { background-color: #6c757d; color: #fff; border: 1px solid #6c757d; border-radius: 8px; width: auto; height: auto; display: inline-flex; align-items: center; gap: 6px; padding: 9px 15px; font-size: 0.95em; font-weight: bold; cursor: pointer; transition: background-color 0.2s ease, transform 0.15s ease; text-decoration: none; line-height: 1; margin-right: 15px; flex-shrink: 0; text-transform: uppercase; }
-        .top-back-btn:hover { background-color: #5a6268; border-color: #545b62; transform: translateY(-1px); }
-        .top-back-btn i { font-size: 0.9em; }
-        .page-top-bar .section-title { margin-bottom: 0; text-align: left; flex-grow: 1; font-size: 1.3em; }
-
-        .banner { width: 100%; max-width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 25px; background-color: #e9ecef; min-height: 150px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .banner img#bannerImage { max-width: 100%; display: block; height: auto; }
-        .home-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 18px; width: 100%; max-width: 550px; margin: 0 auto; padding: 0 5px;}
-        .action-card { background: #fff; padding: 20px 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: transform 0.25s ease, box-shadow 0.25s ease; box-shadow: 0 3px 10px rgba(0,0,0,0.07); cursor: pointer; text-align: center; border: 1px solid #e9ecef; }
-        .action-card:hover { transform: translateY(-5px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
-        .action-card i { font-size: 26px; color: #fff; width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-bottom: 10px; transition: transform 0.3s ease; }
-        .action-card:hover i { transform: scale(1.1) rotate(5deg); }
-        .action-card span { font-weight: 500; font-size: 1.05em; color: #333; }
-        .action-card i.icon-earn { background-color: #ffab00; } .action-card i.icon-ads { background-color: #00b0ff; } .action-card i.icon-bonus { background-color: #e53935; } .action-card i.icon-history { background-color: #8e44ad; } .action-card i.icon-withdraw { background-color: #2ecc71; } .action-card i.icon-refer { background-color: #f39c12; }
-
-        #adCooldownTimer { font-size: 0.85em; color: #e74c3c; margin-top: 5px; font-weight: 500; min-height: 1em; }
-        #adCooldownTimer.ready { color: #27ae60; font-weight: 600; }
-        #adCooldownTimer:empty { display: none; } /* Hide if empty */
-
-
-        .page-content-container { width: 100%; max-width: 600px; padding: 15px 5px; margin-left: auto; margin-right: auto; }
-        .section-title { text-align: center; margin-bottom: 25px; font-size: 1.4em; color: #333; font-weight: 600; }
-        input[type="text"], input[type="number"], input[type="url"], select, textarea, input[type="file"], input[type="email"], input[type="password"] {
-            padding: 11px 14px; border: 1px solid #ccc; border-radius: 8px; width: 100%; margin-top: 5px; font-size: 1em; box-sizing: border-box; transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        input[type="text"]:focus, input[type="number"]:focus, input[type="url"]:focus, select:focus, textarea:focus, input[type="file"]:focus, input[type="email"]:focus, input[type="password"]:focus {
-            border-color: #1e90ff; outline: none; box-shadow: 0 0 0 0.2rem rgba(30, 144, 255, 0.25);
-        }
-        #page-settings input[type="password"] { padding-right: 40px; }
-        input[type="file"] { padding: 10px 12px; background: #f8f9fa; cursor: pointer; border: 1px solid #ced4da;}
-        .info-card { background: #eef2f7; border: 1px solid #e0e6ed; color: #555; border-radius: 10px; padding: 18px; margin-bottom: 20px; width: 100%; text-align: center; font-size: 1em; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
-        .form-group { width: 100%; margin-bottom: 18px; position: relative; }
-        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #555; }
-        #withdrawAmountDisplay { margin-left: 10px; font-size: 0.9em; color: #555; font-weight: 500;}
-        .earn-section { background: #fff; border-radius: 12px; padding: 25px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); text-align: center; border: 1px solid #e0e6ed; }
-        .earn-section h3 { margin-top: 0; margin-bottom: 10px; color: #0056b3; font-size: 1.2em; }
-        .earn-section p { font-size: 0.95em; color: #666; margin-bottom: 15px; }
-        .earn-section button { margin-top: 10px; }
-
-        .earn-timer, .message-area {
-            min-height: 1.3em;
-            padding: 0; border: none; background: transparent;
-            margin-top: 10px; font-size: 0.9em; font-weight: 500; text-align: center;
-        }
-        #dailySpinTimer:empty, #dailySpinMessage:empty,
-        #dailyBonusTimer:empty, #dailyBonusMessage:empty,
-        #adMessage:empty, /* #adCooldownTimer handled separately or above */
-        .timer-display:empty {
-            display: none;
-        }
-
-        .earn-timer.ready, .earn-timer.available { color: #27ae60; font-weight: 600; }
-        .earn-timer.claimed { color: #888; font-weight: 500; }
-        #dailySpinTimer.ready, #dailySpinTimer.available { color: #27ae60; }
-        #dailySpinTimer.claimed { color: #888; }
-        #dailySpinTimer { color: #e74c3c; }
-
-
-        #tasks-list { width: 100%; display: flex; flex-direction: column; gap: 18px; margin-top: 15px; }
-        .task-card {
-            background: #ffffff; border-radius: 10px; padding: 18px 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.07); display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-left-color 0.3s ease; width: 100%; flex-wrap: wrap; gap: 15px; border: 1px solid #e7edf2; border-left: 5px solid #1e90ff; position: relative; overflow: hidden;
-        }
-        .task-card:hover { transform: translateY(-3px) scale(1.01); box-shadow: 0 7px 18px rgba(0,0,0,0.1); border-left-color: #2ecc71; }
-        .task-info { font-size: 1em; flex-grow: 1; }
-        .task-info .task-title { font-weight: 600; margin-bottom: 6px; display: block; color: #2c3e50; font-size: 1.1em;}
-        .task-info .task-description { font-size: 0.9em; color: #555; display: block; margin-bottom: 10px; line-height: 1.5; }
-        .task-info .task-reward { font-size: 1em; color: #1abc9c; font-weight: 700; }
-        .task-action { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-
-        .earn-btn {
-            padding: 9px 18px; border: 1px solid #1e90ff; background: none; color: #1e90ff; border-radius: 20px; cursor: pointer; transition: all 0.25s ease; font-weight: 600; white-space: nowrap; font-size: 0.9em;
-        }
-        .earn-btn:hover:not(:disabled) { background: #1e90ff; color: white; transform: translateY(-2px) scale(1.05); }
-        .earn-btn.primary { background-color: #1e90ff; color: white; border-color: #1e90ff; }
-        .earn-btn.primary:hover { background-color: #1c86ee; border-color: #1c86ee; transform: translateY(-2px) scale(1.05); }
-
-        .timer-display { font-size: 0.85em; color: #e74c3c; min-height: 15px; text-align: right; font-weight: 500;}
-        .timer-display.ready, .timer-display.available { color: #27ae60; }
-        .timer-display.claimed { color: #888; }
-
-        .task-proof-upload { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #dce4ec; text-align: left; width: 100%;}
-        .task-proof-upload label { font-size: 0.9em; font-weight: 500; color: #495057; }
-        .task-proof-upload input[type="file"] { margin-top: 8px; font-size: 0.9em; display: block; }
-        .task-proof-upload button { margin-top: 10px; font-size: 0.9em; padding: 6px 14px; }
-
-        .spin-wheel-container { position: relative; width: 290px; height: 290px; margin: 30px auto 20px; user-select: none; }
-        #spinWheel {
-            width: 100%; height: 100%; border-radius: 50%; position: relative; overflow: hidden;
-            transition: transform 8s cubic-bezier(0.23, 1, 0.32, 1);
-            box-shadow: 0 0 0 8px rgba(255,255,255,0.6), inset 0 0 15px rgba(0,0,0,0.25), 0 10px 20px rgba(0,0,0,0.1);
-            border: 3px solid #b0bec5;
-        }
-        #spinWheel.spinning { /* filter: motion-blur(1px); */ }
-
-        .spin-segment {
-            position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%;
-            display: flex; align-items: center; justify-content: center; pointer-events: none;
-        }
-        .spin-segment::after {
-            content: ''; position: absolute; height: 100%; width: 1px; background-color: rgba(0, 0, 0, 0.1);
-            right: -0.5px; top: 0; transform-origin: 0 0;
-            transform: rotate(calc(360deg / var(--num-segments) * -1 / 2 + 0.5deg));
-        }
-        .spin-segment:last-child::after { display: none; }
-
-        .spin-segment-text {
-            position: absolute; font-size: 10px; font-weight: 600; color: #fff; text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
-            text-align: center; pointer-events: none; padding: 3px; box-sizing: border-box; white-space: normal;
-            line-height: 1.1; max-width: 70%; display: block; transform: var(--text-transform);
-        }
-        .spin-segment-text.highlight {
-            color: #ffeb3b; transform: var(--text-transform) scale(1.15) !important; text-shadow: 0 0 8px #fff, 0 0 12px #ffdd59;
-            transition: transform 0.3s ease, color 0.3s ease; font-weight: 700;
-        }
-        .spin-center-display {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70px; height: 70px;
-            background-color: rgba(255, 255, 255, 0.85); border-radius: 50%; display: flex; align-items: center;
-            justify-content: center; font-size: 24px; font-weight: bold; color: #2c3e50; z-index: 12;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-            pointer-events: none;
-        }
-        .spin-center-display.show { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-
-
-        .spin-wheel-container::before {
-            content: ''; position: absolute; width: 30px; height: 30px; background: radial-gradient(circle, #cfd8dc 0%, #78909c 100%);
-            border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            box-shadow: 0 0 8px rgba(0,0,0,0.3); border: 2px solid #546e7a; z-index: 10;
-        }
-        .spin-wheel-container::after {
-            content: ''; position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-            width: 24px; height: 30px; background-color: #c0392b;
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-            filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.4)); z-index: 15;
-        }
-
-        #dailySpinResult {
-            margin-top: 30px; font-weight: 700; font-size: 1.4em; color: #2c3e50;
-            min-height: 0; padding: 0; background-color: transparent; border-radius: 8px;
-            box-shadow: none; display: inline-block; transition: all 0.3s ease-out;
-        }
-        #dailySpinResult:not(:empty) {
-            min-height: 1.6em; padding: 8px 15px; background-color: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1); animation: resultAppear 0.5s ease-out;
-        }
-        @keyframes resultAppear { from { opacity: 0; transform: translateY(15px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-
-        #dailySpinBtn {
-            margin-top: 25px; padding: 12px 30px; font-size: 1.1em; background-color: #27ae60; color: white;
-            border: none; box-shadow: 0 3px 0 #1e8449; border-radius: 25px;
-        }
-        #dailySpinBtn:hover:not(:disabled) { background-color: #2ecc71; transform: translateY(-1px) scale(1.02); box-shadow: 0 4px 0 #1e8449; }
-        #dailySpinBtn:active:not(:disabled) { transform: translateY(1px) scale(1); box-shadow: 0 1px 0 #1e8449; }
-
-        #history-list { width: 100%; margin-top: 10px; display: flex; flex-direction: column; gap: 12px; min-height: 50px; }
-        .history-item { background: #fff; border-radius: 10px; padding: 15px; box-shadow: 0 3px 8px rgba(0,0,0,0.07); display: flex; flex-direction: column; gap: 8px; font-size: 14px; border: 1px solid #eef2f7;}
-        .history-item-details { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; align-items: center;}
-        .history-item-info { color: #555; font-size: 0.95em; }
-        .history-item-amount { font-weight: 600; color: #333; }
-        .history-item-status { font-weight: 600; padding: 5px 12px; border-radius: 15px; font-size: 0.85em; text-align: center; text-transform: capitalize; border: 1px solid transparent; }
-        .status-pending { border-color: #ffecb3; background-color: #fff9e6; color: #ffa000; } .status-approved { border-color: #c8e6c9; background-color: #eafaf1; color: #2e7d32; } .status-rejected { border-color: #ffcdd2; background-color: #fbebec; color: #c62828; }
-        .history-item .timestamp { font-size: 0.85em; color: #888; margin-top: 5px; }
-        #history-message-area { width: 100%; margin-top: 10px; }
-        .referral-link-box { background-color: #e9ecef; border: 1px solid #dce4ec; padding: 20px; border-radius: 10px; text-align: center; margin: 15px 0; word-wrap: break-word; }
-        #referralLinkDisplay { font-size: 1.2em; font-weight: bold; color: #0056b3; display: block; margin-bottom: 15px; font-family: 'Courier New', Courier, monospace; min-height: 1.2em; background: #fff; border-radius: 6px; padding: 10px 12px; border: 1px dashed #adb5bd;}
-        #copyLinkBtn { padding: 9px 18px; font-size: 14px; }
-        .referral-stats p { margin-bottom: 8px; font-size: 1.1em; }
-        .referral-stats strong { color: #1e90ff; }
-        .enter-referral-code-section { margin-top: 25px; padding: 20px; background-color: #eaf1ff; border: 1px solid #c5d7ff; border-radius: 10px; text-align: center; }
-        .enter-referral-code-section.hidden { display: none; }
-        .enter-referral-code-section label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
-        #enteredReferralCodeInput { width: 100%; max-width: 280px; padding: 10px 12px; margin: 0 auto 15px auto; border: 1px solid #adb5bd; border-radius: 8px; display: block; }
-        #submitReferralCodeBtn { padding: 10px 25px; font-size: 1em; background-color: #28a745; color: white; cursor: pointer; border: none; border-radius: 8px;}
-        #submitReferralCodeBtn:hover { background-color: #218838; transform: translateY(-2px); }
-        #referralCodeMessage { font-size: 0.9em; margin-top: 15px; color: #555; font-weight: bold;}
-
-        #settings-form label { font-size: 0.95em; }
-        #settings-form .form-group { margin-bottom: 25px; }
-        #changePasswordBtn { width: 100%; padding: 12px; font-size: 1.05em; font-weight: 500; margin-top: 10px; background-color: #ffc107; }
-        #changePasswordBtn:hover { background-color: #e0a800; transform: translateY(-2px); }
-        #deleteAccountBtn { background-color: #dc3545; color: white; border: 1px solid #dc3545; width: 100%; padding: 12px; font-size: 1em; font-weight: bold; margin-top: 30px; border-radius: 8px; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        #deleteAccountBtn:hover { background-color: #c82333; border-color: #bd2130; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(220,53,69,0.2); }
-        #deleteAccountBtn:active { transform: translateY(0px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .user-info-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.95em; }
-        .user-info-item:last-child { border-bottom: none; }
-        .user-info-label { font-weight: 600; color: #333; margin-right: 10px; flex-shrink: 0; }
-        .user-info-value { color: #555; word-break: break-all; text-align: right; flex-grow: 1; margin-right: 10px; }
-        .copy-btn { background: none; border: 1px solid #ccc; color: #555; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 0.8em; transition: background-color 0.2s, color 0.2s; flex-shrink: 0; }
-        .copy-btn:hover { background-color: #e9e9e9; color: #333; }
-        .copy-btn i { margin-right: 3px; }
-        .settings-section { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
-        .settings-section h3 { margin-bottom: 20px; font-size: 1.2em; color: #444; }
-
-        .content-page { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.06); width: 100%; max-width: 600px; margin-top: 0; border: 1px solid #e9ecef;}
-        .content-page h3 { margin-bottom: 20px; color: #0056b3; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .content-page p, .content-page ul { margin-bottom: 15px; line-height: 1.7; color: #555; font-size: 0.95em;}
-        .content-page ul { list-style-type: disc; list-style-position: inside; padding-left: 5px; }
-        .content-page li { margin-bottom: 8px;}
-        .content-page h4 { margin-top: 20px; margin-bottom: 8px; color: #333; font-weight: 600;}
-        .content-page a { color: #3498db; text-decoration: none; font-weight: 500; }
-        .content-page a:hover { text-decoration: underline; color: #2980b9; }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 15px; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s; }
-        .modal-overlay.active { opacity: 1; visibility: visible; transition: opacity 0.3s ease, visibility 0s linear 0s; }
-        .modal-content { background-color: white; padding: 25px; border-radius: 10px; max-width: 95%; width: auto; min-width: 300px; max-height: 85vh; overflow-y: auto; position: relative; text-align: center; box-shadow: 0 8px 25px rgba(0,0,0,0.2); transform: scale(0.9) translateY(-20px); opacity: 0; transition: transform 0.3s ease-out, opacity 0.3s ease-out; }
-        .modal-overlay.active .modal-content { transform: scale(1) translateY(0); opacity: 1;}
-        .modal-close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 28px; cursor: pointer; color: #aaa; line-height: 1; padding: 0; transition: color 0.2s ease, transform 0.2s ease; }
-        .modal-close-btn:hover { color: #333; transform: rotate(90deg); }
-        #adContent { margin-top: 20px; min-height: 90px; display: flex; justify-content: center; align-items: center; border: 1px dashed #eee; background: #f9f9f9; border-radius: 8px; }
-        #adContent iframe { max-width: 100%; border: none; }
-        #adMessage { margin-top: 15px; }
-
-        .footer { width: 100%; padding: 20px 0; text-align: center; color: #777; font-size: 14px; margin-top: auto; background: #fff; border-top: 1px solid #e7e7e7;}
-        .withdrawal-instructions { background-color: #fff0c2; border: 1px solid #ffe28a; color: #795500; border-radius: 10px; padding: 18px; margin-bottom: 20px; width: 100%; font-size: 0.9em; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: left; line-height: 1.6; }
-        .withdrawal-instructions h4 { margin-top: 0; margin-bottom: 10px; color: #533a00; font-size: 1.1em; }
-        .withdrawal-instructions ul { list-style-type: disc; padding-left: 20px; margin-bottom: 0; }
-        .withdrawal-instructions li { margin-bottom: 5px; }
-
-        @media (max-width: 480px) {
-             .home-actions { grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 100%; padding: 0 8px; }
-             .action-card { padding: 15px 12px; gap: 6px; }
-             .action-card i { width: 45px; height: 45px; font-size: 22px; }
-             .action-card span { font-size: 0.9em; }
-             header { padding: 8px 12px; }
-             .header-right { gap: 8px; }
-             .coin-box { padding: 6px 10px; font-size: 13px; }
-             #muteButton { font-size: 18px; }
-             .menu-icon { font-size: 24px; padding: 4px 6px;}
-             .dropdown-menu { right: 5px; min-width: 180px; }
-             .dropdown-menu a { padding: 12px 15px; font-size: 14px; }
-             main { padding: 15px 10px; }
-             .auth-form { padding: 25px 20px; }
-             #enteredReferralCodeInput { max-width: none; width: 80%; }
-             #submitReferralCodeBtn { width: 60%; max-width: 180px; }
-             .page-top-bar .section-title { font-size: 1.1em; }
-             .top-back-btn { padding: 7px 12px; gap: 4px; font-size: 0.9em; margin-right: 10px;}
-             #settings-form .form-group { margin-bottom: 20px; }
-             #changePasswordBtn, #deleteAccountBtn { font-size: 1em; padding: 11px; }
-             .auth-form select { background-position: right 0.7rem center; }
-             .spin-wheel-container { width: 250px; height: 250px; }
-             .spin-segment-text { font-size: 9.5px; max-width: 80%; }
-             .spin-wheel-container::after { top: -18px; border-left-width: 12px; border-right-width: 12px; border-bottom-width: 18px;}
-             .user-info-item { flex-direction: column; align-items: flex-start; }
-             .user-info-value { text-align: left; margin-bottom: 5px; }
-             .copy-btn { align-self: flex-start; }
-             .triple-spinner-loader { width: 60px; height: 60px; }
-             .triple-spinner-loader div { border-width: 4px; }
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f4f7f9; color: #333; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        h1, h2 { color: #4A00E0; border-bottom: 2px solid #ddd; padding-bottom: 10px;}
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 20px; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f8f8; }
+        .btn { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; }
+        .btn-approve { background-color: #28a745; }
+        .btn-reject { background-color: #dc3545; }
+        .status { padding: 4px 8px; border-radius: 12px; font-size: 0.9em; color: white; }
+        .status-approved { background: #28a745; }
+        .status-rejected { background: #dc3545; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-group input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
+        #save-config { background-color: #4A00E0; margin-top: 20px; font-size: 1.1em; }
+        #status-message { text-align: center; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <audio id="loading-music" src="path/to/your-loading-music.mp3" loop></audio>
-    <audio id="app-background-music" src="path/to/your-app-background-music.mp3" loop></audio>
-    <audio id="spin-tick-sound" src="path/to/your-spin-tick.mp3"></audio>
-    <audio id="win-sound" src="path/to/your-win-sound.mp3"></audio>
+    <div class="container">
+        <h1>CryptoCash Admin Panel</h1>
 
-    <div id="actionAdModal" class="modal-overlay" style="z-index: 1001;">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <button id="actionAdCloseBtn" class="modal-close-btn" onclick="closeActionAdModal()">×</button>
-            <h4>Advertisement</h4>
-            <div id="actionAdContent" style="min-height: 250px; display: flex; align-items: center; justify-content: center;">
-                 <p class="loading-indicator">Loading Ad...</p>
+        <div class="card">
+            <h2>App Configuration</h2>
+            <div class="form-grid">
+                <div class="form-group"><label for="bot-name">Bot Name</label><input type="text" id="bot-name"></div>
+                <div class="form-group"><label for="bot-username">Bot Username</label><input type="text" id="bot-username"></div>
+                <div class="form-group"><label for="reward-ad">Reward per Ad</label><input type="number" id="reward-ad"></div>
+                <div class="form-group"><label for="ad-limit">Daily Ad Limit</label><input type="number" id="ad-limit"></div>
+                <div class="form-group"><label for="min-withdraw">Min Withdrawal Coins</label><input type="number" id="min-withdraw"></div>
+                <div class="form-group"><label for="reward-referral">Reward per Referral</label><input type="number" id="reward-referral"></div>
+                <div class="form-group"><label for="max-referrals">Max Referrals Limit</label><input type="number" id="max-referrals"></div>
             </div>
-            <button id="actionAdContinueBtn" class="btn-primary" style="margin-top: 20px; display:none;" onclick="closeActionAdModalAndContinue()">Continue</button>
+            <button class="btn" id="save-config">Save Settings</button>
+            <p id="status-message"></p>
         </div>
-    </div>
 
-    <div id="loading-overlay">
-        <div class="triple-spinner-loader"> <div></div> <div></div> <div></div> </div>
-        <p>Loading TapTak...</p>
-    </div>
+        <div class="card">
+            <h2>Pending Withdrawals</h2>
+            <table id="pending-table">
+                <thead><tr><th>User ID</th><th>Username</th><th>Amount</th><th>Address</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody><tr><td colspan="6">Loading...</td></tr></tbody>
+            </table>
+        </div>
 
-    <div id="auth-container">
-        <div id="auth-message-global" class="loading-indicator global" style="display: none;"></div>
-        <div id="verification-message-area" style="width: 100%; max-width: 380px; text-align: center;"></div>
-        
-        <!-- START: Action Code Handler Form -->
-        <div id="action-code-form" class="auth-form" style="display: none;">
-            <!-- This content will be changed by JavaScript -->
-        </div>
-        <!-- END: Action Code Handler Form -->
-
-        <div id="login-form" class="auth-form" style="display: none;">
-            <h2>Login to TapTak</h2>
-            <div class="form-group"> <label for="login-email">Email</label> <input type="email" id="login-email" required> </div>
-            <div class="form-group"> <label for="login-password">Password</label> <input type="password" id="login-password" required> <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('login-password', this)"></i> </div>
-            <div class="forgot-password-link"><a onclick="showAuthForm('forgot')">Forgot Password?</a></div>
-            <button class="btn-login" onclick="loginUser()">Login</button>
-            <p class="auth-toggle-link">No account? <a onclick="showAuthForm('signup')">Sign Up</a></p>
-            <div class="auth-separator"><span>OR</span></div>
-            <button id="googleSignInBtn" onclick="signInWithGoogle()"> <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg> Sign in with Google </button>
-            <div id="login-message" class="message-area"></div>
-        </div>
-        <div id="signup-form" class="auth-form" style="display: none;">
-             <h2>Sign Up for TapTak</h2>
-            <div class="form-group"> <label for="signup-username">Username</label> <input type="text" id="signup-username" required> </div>
-            <div class="form-group"> <label for="signup-email">Email</label> <input type="email" id="signup-email" required> </div>
-            <div class="form-group"> <label for="signup-password">Password (min. 6 characters)</label> <input type="password" id="signup-password" required> <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('signup-password', this)"></i> </div>
-            <button class="btn-login" onclick="signupUser()">Sign Up</button>
-            <p class="auth-toggle-link">Already have an account? <a onclick="showAuthForm('login')">Login</a></p>
-            <div class="auth-separator"><span>OR</span></div>
-            <button id="googleSignUpBtn" onclick="signInWithGoogle()"> <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg> Sign up with Google </button>
-            <div id="signup-message" class="message-area"></div>
-        </div>
-        <div id="forgot-password-form" class="auth-form" style="display: none;">
-            <h2>Password Reset</h2> <p style="font-size:0.9em; color:#666; margin-bottom: 15px;">Enter your email for a reset link.</p>
-            <div class="form-group"> <label for="forgot-email">Email</label> <input type="email" id="forgot-email" required> </div>
-            <button class="btn-login" onclick="sendPasswordReset()">Send Reset Link</button>
-            <p class="auth-toggle-link"><a onclick="showAuthForm('login')">Back to Login</a></p>
-            <div id="forgot-password-message" class="message-area"></div>
-        </div>
-    </div>
-
-    <div id="app-container" style="display: none;">
-        <header>
-             <div class="header-left"> <img id="appLogo" src="placeholder-logo.png" alt="logo"> </div>
-             <div class="header-right">
-                 <button id="muteButton"><i class="fas fa-volume-up"></i></button>
-                 <div class="coin-box"> Coins: <span id="coin-balance">0</span> </div>
-                 <div class="menu-icon" id="menuIcon" onclick="toggleMenu(event)">⋮</div>
-                 <div class="dropdown-menu" id="dropdownMenu">
-                     <a onclick="showPage('page-settings'); closeMenu();"><i class="fas fa-cog"></i> Settings</a>
-                     <a onclick="showPage('page-about'); closeMenu();"><i class="fas fa-info-circle"></i> About</a>
-                     <a onclick="showPage('page-help'); closeMenu();"><i class="fas fa-question-circle"></i> Help</a>
-                     <a id="logoutButton" onclick="logoutUser(); closeMenu();"><i class="fas fa-sign-out-alt"></i> Logout</a>
-                 </div>
-             </div>
-        </header>
-        <main>
-            <div id="page-home" class="page active-page">
-                 <div id="welcomeMessageContainer" style="width: 100%; text-align: center; margin-bottom: 15px;"> <h3 id="welcomeMessage" style="display: none; color: #333; font-weight: 500;"></h3> </div>
-                 <div class="banner"> <img id="bannerImage" src="placeholder-banner.png" alt="Banner"> </div>
-                 <div class="home-actions">
-                    <div class="action-card" onclick="showPage('page-earn')"><i class="fas fa-coins icon-earn"></i> <span>Earn Coins</span></div>
-                    <div class="action-card" id="showAdsCard" onclick="showAdModal()"> <i class="fas fa-tv icon-ads"></i> <span>Show Ads</span> <div id="adCooldownTimer" class="earn-timer"></div> </div>
-                    <div class="action-card" onclick="showPage('page-earn')"> <i class="fas fa-gift icon-bonus"></i> <span>Daily Bonus</span> </div>
-                    <div class="action-card" onclick="showPage('page-history')"><i class="fas fa-history icon-history"></i> <span>History</span></div>
-                    <div class="action-card" onclick="showPage('page-withdraw')"><i class="fas fa-hand-holding-usd icon-withdraw"></i> <span>Withdraw</span></div>
-                    <div class="action-card" onclick="showPage('page-referral')"><i class="fas fa-user-friends icon-refer"></i> <span>Refer & Earn</span></div>
-                </div>
-            </div>
-             <div id="page-earn" class="page">
-                 <div class="page-top-bar"> <button class="top-back-btn" onclick="showPage('page-home')"><i class="fas fa-chevron-left"></i><span>BACK</span></button> <h2 class="section-title">Earn Coins</h2> </div>
-                 <div class="page-content-container">
-                     <div class="earn-section"> <h3>🎁 Daily Bonus</h3> <p>Claim your daily reward!</p> <button id="dailyBonusBtn" class="earn-btn primary" onclick="claimDailyBonus()">Claim Bonus</button> <div id="dailyBonusTimer" class="earn-timer">Checking...</div> <div id="dailyBonusMessage" class="message-area"></div> </div>
-                     <div class="earn-section">
-                        <h3>🎡 Daily Spin</h3> <p>Spin the wheel for a chance to win amazing prizes!</p>
-                        <div class="spin-wheel-container">
-                            <div id="spinWheel"> </div>
-                            <div class="spin-center-display" id="spinCenterDisplay"></div>
-                        </div>
-                        <button id="dailySpinBtn" class="earn-btn primary" onclick="doDailySpin()">Spin Now</button>
-                        <div id="dailySpinResult"></div> <div id="dailySpinTimer" class="earn-timer">Checking...</div> <div id="dailySpinMessage" class="message-area"></div>
-                    </div>
-                     <h3 class="section-title" style="margin-top: 30px; text-align:center;">Available Tasks</h3>
-                     <div id="tasks-list" class="loading-indicator">Loading tasks...</div>
-                 </div>
-             </div>
-             <div id="page-withdraw" class="page">
-                 <div class="page-top-bar"> <button class="top-back-btn" onclick="showPage('page-home')"><i class="fas fa-chevron-left"></i><span>BACK</span></button> <h2 class="section-title">Withdraw Coins</h2> </div>
-                 <div class="page-content-container">
-                     <div class="info-card"> Balance: <strong id="withdraw-coin-balance">0</strong> Coins </div>
-                     <div class="withdrawal-instructions">
-                         <h4>Withdrawal Instructions:</h4>
-                         <ul>
-                             <li>Minimum withdrawal amount is <strong id="minWithdrawalInstruction">1000</strong> Coins.</li>
-                             <li>Withdrawals can only be made <strong>3 times a day</strong>.</li>
-                             <li>Please check carefully whether the information is entered correctly.</li>
-                             <li>If the withdrawal has not been received, please contact customer service.</li>
-                         </ul>
-                     </div>
-                     <div id="withdraw-info" style="text-align: center; margin-bottom: 15px; font-size: 0.95em; color: #555;">Loading withdrawal info...</div>
-                     <div class="form-group"> <label for="withdrawAmount">Amount (Coins)</label> <input type="number" id="withdrawAmount" required oninput="calculateEstimatedCurrency()"> <span id="estimatedCurrencyAmount" style="font-size:0.9em; color:#555; margin-left: 5px;"></span> </div>
-                     <div class="form-group"> <label for="withdrawMethod">Method</label> <select id="withdrawMethod" required> <option value="">Select Method</option> <option value="Bkash">Bkash</option> <option value="Nagad">Nagad</option> <option value="Rocket">Rocket</option> <option value="Paypal">PayPal</option><option value="Paytm">Paytm</option> <option value="GPay">Google Pay</option> <option value="Bank">Bank Transfer</option> <option value="Other">Other</option> </select> </div>
-                     <div class="form-group"> <label for="accountDetails">Account Details (Number/Email/Info)</label> <input type="text" id="accountDetails" required> </div>
-                     <button id="submitWithdrawalBtn" class="earn-btn primary" style="width: 100%;" onclick="requestWithdrawal()">Submit Request</button>
-                     <div id="withdrawMessage" class="message-area"></div>
-                 </div>
-             </div>
-             <div id="page-history" class="page">
-                 <div class="page-top-bar"> <button class="top-back-btn" onclick="showPage('page-home')"> <i class="fas fa-chevron-left"></i><span>BACK</span></button> <h2 class="section-title">Withdrawal History</h2> </div>
-                 <div class="page-content-container"> <div id="history-list" class="loading-indicator">Loading history...</div> <div id="history-message-area"></div> </div>
-            </div>
-             <div id="page-referral" class="page">
-                 <div class="page-top-bar"> <button class="top-back-btn" onclick="showPage('page-home')"> <i class="fas fa-chevron-left"></i><span>BACK</span></button> <h2 class="section-title">Refer & Earn</h2> </div>
-                 <div class="page-content-container">
-                     <div class="referral-link-box"> <label style="font-weight: 500; display:block; margin-bottom:8px;">Your Referral Code:</label> <span id="referralLinkDisplay">Loading...</span> <button id="copyLinkBtn" class="earn-btn" onclick="copyReferralCode()"><i class="fas fa-copy" style="margin-right: 5px;"></i> Copy Code</button> </div>
-                     <div class="referral-stats" style="text-align:center;"> <p>Share your code with friends and earn bonus coins!</p> </div>
-                     <div id="enterReferralSection" class="enter-referral-code-section"> <label for="enteredReferralCodeInput">Got a Referral Code?</label> <input type="text" id="enteredReferralCodeInput" placeholder="Enter code here"> <button id="submitReferralCodeBtn" onclick="submitReferralCode()">Submit Code</button> <div id="referralCodeMessage" class="message-area"></div> </div>
-                 </div>
-             </div>
-              <div id="page-settings" class="page">
-                 <div class="page-top-bar"> <button class="top-back-btn" onclick="showPage('page-home')"> <i class="fas fa-chevron-left"></i><span>BACK</span></button> <h2 class="section-title">Settings</h2> </div>
-                 <div class="page-content-container content-page">
-                     <h3>Account Information</h3>
-                     <div class="user-info">
-                         <div class="user-info-item"> <span class="user-info-label">Username:</span> <span id="settingsUsername" class="user-info-value">Loading...</span> <button class="copy-btn" onclick="copyUserInfo('settingsUsername', event)"><i class="fas fa-copy"></i> Copy</button> </div>
-                         <div class="user-info-item"> <span class="user-info-label">Email:</span> <span id="settingsUserEmail" class="user-info-value">Loading...</span> <button class="copy-btn" onclick="copyUserInfo('settingsUserEmail', event)"><i class="fas fa-copy"></i> Copy</button> </div>
-                         <div class="user-info-item"> <span class="user-info-label">User ID:</span> <span id="settingsUserId" class="user-info-value">Loading...</span> <button class="copy-btn" onclick="copyUserInfo('settingsUserId', event)"><i class="fas fa-copy"></i> Copy</button> </div>
-                     </div>
-                     <div class="settings-section">
-                         <h3>Change Password</h3>
-                         <div class="form-group"> <label for="settings-current-password">Current Password</label> <input type="password" id="settings-current-password" required> <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('settings-current-password', this)"></i> </div>
-                         <div class="form-group"> <label for="settings-new-password">New Password (min. 6 characters)</label> <input type="password" id="settings-new-password" required> <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('settings-new-password', this)"></i> </div>
-                         <div class="form-group"> <label for="settings-confirm-password">Confirm New Password</label> <input type="password" id="settings-confirm-password" required> <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('settings-confirm-password', this)"></i> </div>
-                         <button id="changePasswordBtn" class="btn-primary" onclick="changeUserPassword()">Change Password</button>
-                         <div id="changePasswordMessage" class="message-area"></div>
-                     </div>
-                     <div class="settings-section"> <h3>Account Actions</h3> <button type="button" id="deleteAccountBtn" onclick="deleteUserAccount()"> <i class="fas fa-trash-alt"></i> Delete My Account </button> <div id="deleteAccountMessage" class="message-area"></div> </div>
-                 </div>
-             </div>
-             <div id="page-about" class="page">
-                  <div class="page-top-bar"> <button class="top-back-btn" onclick="showPage('page-home')"> <i class="fas fa-chevron-left"></i><span>BACK</span></button> <h2 class="section-title">About TapTak</h2> </div>
-                  <div class="page-content-container content-page"> <p>TapTak is an application where you can earn coins through various activities and withdraw them.</p> <p>Engage with tasks, daily bonuses, spins, and referrals to accumulate your earnings.</p> <p>Version: 4.2</p> </div>
-             </div>
-             <div id="page-help" class="page">
-                  <div class="page-top-bar"> <button class="top-back-btn" onclick="showPage('page-home')"> <i class="fas fa-chevron-left"></i><span>BACK</span></button> <h2 class="section-title">Help & Support</h2> </div>
-                 <div class="page-content-container content-page">
-                     <h4>Getting Started:</h4> <ul> <li>Sign up using your Username, Email/Password, or with your Google account.</li> <li>Verify your email address by clicking the link sent to your inbox (if you signed up with email/password).</li> <li>Explore the "Earn Coins" page to find ways to earn.</li> <li>Your current coin balance is always visible in the header.</li> </ul>
-                     <h4>Earning Coins:</h4> <ul> <li><strong>Daily Bonus:</strong> Claim your free coin bonus once every 24 hours from the "Earn Coins" page.</li> <li><strong>Daily Spin:</strong> Try your luck on the spin wheel once every 24 hours for a chance to win coins.</li> <li><strong>Tasks:</strong> Complete available tasks listed on the "Earn Coins" page. Some tasks may require proof of completion (like a screenshot) and have cooldown timers before you can do them again.</li> <li><strong>Ads:</strong> Watch advertisements (if available) for a small coin reward. There's a 10-minute cooldown between ad views.</li> <li><strong>Referrals:</strong> Share your unique referral code (found on the "Refer & Earn" page) with friends. You might earn bonus coins when they sign up and use your code.</li> </ul>
-                     <h4>Withdrawals:</h4> <ul> <li>Navigate to the "Withdraw" page to request a coin withdrawal.</li> <li>Ensure you meet the minimum withdrawal amount (displayed on the page).</li> <li>Select your preferred withdrawal method and enter your account details carefully.</li> <li>Submitted requests will be reviewed. Check the "History" page for the status of your withdrawals (Pending, Approved, or Rejected). Processing is manual and may take some time.</li> <li>You can cancel your 'Pending' withdrawal requests from the History page if needed.</li> <li>If you encounter an error like "Failed to submit request after balance deduction", please check your internet connection and try again after a short while. If the problem persists, contact support. This can sometimes be due to database write rules or temporary server issues.</li> </ul>
-                     <h4>Referrals:</h4> <ul> <li>Find your personal referral code on the "Refer & Earn" page. Share it with others.</li> <li>If you received a referral code from a friend, you can enter it on the "Refer & Earn" page (usually only available once, for new users).</li> </ul>
-                     <h4>Settings:</h4> <ul> <li>View your Username, Email, and User ID on the "Settings" page.</li> <li>You can change your password (requires current password for verification).</li> <li>You can permanently delete your account from the Settings page. This action is irreversible and will erase all your data.</li> </ul>
-                     <h4>Troubleshooting:</h4> <ul> <li><strong>App Not Loading / Slow:</strong> Ensure you have a stable internet connection. Initial data loading might take a few seconds.</li> <li><strong>Display Issues:</strong> Try clearing your browser's cache and cookies.</li> <li><strong>Cannot Claim Bonus/Spin/Ad Reward:</strong> Check the respective cooldown timers. You must wait for the timer to complete before trying again.</li> <li><strong>Withdrawal Not Processed:</strong> Withdrawals are processed manually. Please allow some time for review. Check the "History" page for status updates.</li> <li><strong>Login Failed:</strong> Double-check your email and password. The message "Incorrect email or password" will appear if credentials don't match. If you signed up with email/password, ensure your email is verified.</li> <li><strong>Password Change Failed:</strong> Ensure you're entering your *current* password correctly for verification. For password changes, ensure the new password meets length requirements and the confirmation matches. Some security-sensitive actions might require a recent login (you'll see a message if so).</li> <li><strong>Signup Failed:</strong> Ensure your chosen username is provided (at least 3 characters), the email is valid, and the password meets the minimum length requirement.</li> </ul>
-                     <p style="margin-top: 20px;">If you need further assistance, please contact support at: <a href="mailto:support@coinzy.example.com">support@coinzy.example.com</a></p>
-                 </div>
-             </div>
-        </main>
-        <footer class="footer"> © <span id="currentYear"></span> TapTak. All rights reserved. </footer>
-        <div id="adModal" class="modal-overlay" onclick="closeAdModal()">
-            <div class="modal-content" onclick="event.stopPropagation()">
-                <button class="modal-close-btn" onclick="closeAdModal()">×</button>
-                <h4>Advertisement</h4>
-                <div id="adContent"> <p class="loading-indicator">Loading Ad...</p> </div>
-                <div id="adMessage" class="message-area"></div>
-            </div>
+        <div class="card">
+            <h2>Processed Withdrawals</h2>
+            <table id="processed-table">
+                <thead><tr><th>User ID</th><th>Username</th><th>Amount</th><th>Address</th><th>Date</th><th>Status</th></tr></thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        // --- Firebase Configuration ---
+        // ===================================================================
+        // আপনার নিজের ফায়ারবেস কনফিগারেশন এখানেও পেস্ট করুন
+        // ===================================================================
         const firebaseConfig = {
-          apiKey: "AIzaSyB48gD1mAzw-4J_1OvO-rdbzlAUDtUQZpQ",
-          authDomain: "income-app-ads.firebaseapp.com",
-          databaseURL: "https://income-app-ads-default-rtdb.firebaseio.com",
-          projectId: "income-app-ads",
-          storageBucket: "income-app-ads.firebasestorage.app",
-          messagingSenderId: "82757131654",
-          appId: "1:82757131654:web:22351a172ba7ea0a356007",
-          measurementId: "G-FNS2Z4H8QV"
+            apiKey: "AIzaSyBNBAupa-P-NA5WuttGiGFiL0TPUmcU0NM",
+            authDomain: "chats-ab4af.firebaseapp.com",
+            databaseURL: "https://chats-ab4af-default-rtdb.firebaseio.com",
+            projectId: "chats-ab4af",
+            storageBucket: "chats-ab4af.appspot.com",
+            messagingSenderId: "317093436715",
+            appId: "1:317093436715:web:5cf4391b87f51eade4b96e"
         };
-        
-        // --- START: NEW AND MODIFIED CONSTANTS ---
-        // আপনার ওয়েবসাইটের URL এখানে দিন
-        const actionCodeSettings = {
-            url: 'https://tap-tak.vercel.app/'
-        };
-        // --- END: NEW AND MODIFIED CONSTANTS ---
 
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        // --- App Constants ---
-        const DAILY_BONUS_AMOUNT = 50;
-        const AD_WATCH_REWARD = 10; const AD_COOLDOWN_MILLIS = 10 * 60 * 1000;
-        const ONE_DAY_MILLIS = 24 * 60 * 60 * 1000;
-        const MIN_USERNAME_LENGTH = 3;
-
-        // --- Daily Spinner Configuration ---
-        const spinSegments = [
-            { reward: 10, label: "10 Coins", color: "#ff7675" }, { reward: 25, label: "25 Coins", color: "#fdcb6e" },
-            { reward: 5,  label: "5 Coins",  color: "#00b894" }, { reward: 75, label: "75 Coins!",color: "#74b9ff" },
-            { reward: 0,  label: "Try Again",color: "#a29bfe" }, { reward: 15, label: "15 Coins", color: "#fd79a8" },
-            { reward: 50, label: "50 Coins", color: "#ffeaa7" }, { reward: 100,label: "100 Coins!!",color: "#55efc4" }
-        ];
-        const NUM_SPIN_SEGMENTS = spinSegments.length;
-        let currentRotation = 0;
-        let isSpinning = false;
-
-        // --- Initialize Firebase ---
-        let app; let auth; let db; let storage; let currentUser = null;
-        let userRef = null; let userDataListener = null; let tasksRef = null; let tasksListener = null;
-        let appConfigRef = null; let appConfigListener = null; let historyRef = null; let historyListener = null;
-        let userCoins = 0; let userReferralCode = null; let userLastEarnedTimestamps = {};
-        let hasEnteredReferral = false; let userLastDailyBonusClaim = 0; let userLastSpinClaim = 0;
-        let userLastAdWatchClaim = 0; let userCreatedAt = 0; let userUsername = null;
-        let appConfigData = {}; let activeTasksData = {};
-        const taskTimers = {}; let bonusTimerInterval = null; let spinTimerInterval = null; let adTimerInterval = null;
-        let resendVerificationInterval = null;
-        let loadingMusic = null; let appBackgroundMusic = null; let isAppMusicMuted = true;
-        let spinTickSound = null; let winSound = null;
-
-        // Sound and Ad related global variables
-        let audioInitialized = false;
-        let lastAdShownTime = 0;
-        const AD_INTERVAL_MS = 5 * 60 * 1000;
-        let pendingActionAfterAd = null;
-
-        function clearAllTimers() {
-            Object.keys(taskTimers).forEach(key => clearInterval(taskTimers[key]));
-            if(bonusTimerInterval) clearInterval(bonusTimerInterval); bonusTimerInterval = null;
-            if(spinTimerInterval) clearInterval(spinTimerInterval); spinTimerInterval = null;
-            if(adTimerInterval) clearInterval(adTimerInterval); adTimerInterval = null;
-            if(resendVerificationInterval) clearInterval(resendVerificationInterval); resendVerificationInterval = null;
-        }
-
-        try {
-            if (typeof firebase !== 'undefined' && firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY" && firebaseConfig.projectId) {
-                app = firebase.initializeApp(firebaseConfig);
-                auth = firebase.auth(); db = firebase.database(); storage = firebase.storage();
-            } else {
-                 if (firebaseConfig.apiKey === "YOUR_API_KEY") { throw new Error("Firebase config placeholder detected."); }
-                throw new Error("Firebase config missing/invalid or Firebase SDK not loaded.");
-            }
-        } catch(e) {
-            console.error("Firebase init error:", e);
-            const loe = document.getElementById('loading-overlay');
-            if(loe) { loe.innerHTML = `<p style="color: red; padding: 20px; text-align:center;">Error: ${e.message}<br>Application cannot start.</p>`; loe.style.display = 'flex'; }
-            else { document.body.innerHTML = `<div style="color: red; padding: 20px; text-align:center;">Critical Error. Check console.<br>${e.message}</div>`; }
-        }
-
-        const authContainer = document.getElementById('auth-container');
-        const appContainer = document.getElementById('app-container');
-        const loginFormEl = document.getElementById('login-form');
-        const signupFormEl = document.getElementById('signup-form');
-        const forgotPasswordFormEl = document.getElementById('forgot-password-form');
-        const actionCodeFormEl = document.getElementById('action-code-form'); // New element
-        const verificationMessageArea = document.getElementById('verification-message-area');
-        const coinBalanceElement = document.getElementById('coin-balance');
-        const withdrawCoinBalanceElement = document.getElementById('withdraw-coin-balance');
-        const authMessageGlobal = document.getElementById('auth-message-global');
-        const currentYearElement = document.getElementById('currentYear');
-        const bannerImageElement = document.getElementById('bannerImage');
-        const tasksListElement = document.getElementById('tasks-list');
-        const historyListElement = document.getElementById('history-list');
-        const referralLinkDisplay = document.getElementById('referralLinkDisplay');
-        const appLogoElement = document.getElementById('appLogo');
-        const withdrawInfoElement = document.getElementById('withdraw-info');
-        const enterReferralSection = document.getElementById('enterReferralSection');
-        const dailyBonusBtn = document.getElementById('dailyBonusBtn');
-        const dailyBonusTimer = document.getElementById('dailyBonusTimer');
-        const dailyBonusMessage = document.getElementById('dailyBonusMessage');
-        const dailySpinBtn = document.getElementById('dailySpinBtn');
-        const dailySpinResult = document.getElementById('dailySpinResult');
-        const dailySpinTimer = document.getElementById('dailySpinTimer');
-        const dailySpinMessage = document.getElementById('dailySpinMessage');
-        const spinWheelElement = document.getElementById('spinWheel');
-        const spinCenterDisplay = document.getElementById('spinCenterDisplay');
-        const adModal = document.getElementById('adModal'); // Original Ad Modal
-        const adContent = document.getElementById('adContent'); // Original Ad Content
-        const adMessage = document.getElementById('adMessage'); // Original Ad Message
-        const actionAdModal = document.getElementById('actionAdModal'); // Generic Ad Modal
-        const actionAdContent = document.getElementById('actionAdContent'); // Generic Ad Content
-        const actionAdCloseBtn = document.getElementById('actionAdCloseBtn');
-        const actionAdContinueBtn = document.getElementById('actionAdContinueBtn');
-        const adCooldownTimerElement = document.getElementById('adCooldownTimer');
-        const withdrawAmountInput = document.getElementById('withdrawAmount');
-        const estimatedCurrencyAmountSpan = document.getElementById('estimatedCurrencyAmount');
-        const welcomeMessageContainer = document.getElementById('welcomeMessageContainer');
-        const welcomeMessageElement = document.getElementById('welcomeMessage');
-        const settingsUserEmail = document.getElementById('settingsUserEmail');
-        const settingsUserId = document.getElementById('settingsUserId');
-        const settingsUsername = document.getElementById('settingsUsername');
-        const submitWithdrawalBtn = document.getElementById('submitWithdrawalBtn');
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const muteButton = document.getElementById('muteButton');
-
-
-        function initializeAudio() {
-            if (audioInitialized) return;
-            const audioElements = [loadingMusic, appBackgroundMusic, spinTickSound, winSound];
-            let canPlayCount = 0;
-            audioElements.forEach(audio => {
-                if (audio) {
-                    const playPromise = audio.play();
-                    if (playPromise !== undefined) {
-                        playPromise.then(() => { audio.pause(); audio.currentTime = 0; canPlayCount++;
-                            if (canPlayCount === audioElements.filter(a => a).length) audioInitialized = true;
-                        }).catch(() => { /* Ignore individual play/pause errors during init */ });
-                    }
-                }
-            });
-            setTimeout(() => { if (!audioInitialized && canPlayCount > 0) audioInitialized = true; else if(!audioInitialized) audioInitialized = true; /* Mark true to avoid retries */ }, 500);
-        }
-
-        function showActionAd(actionToContinue = null) {
-            if (!actionAdModal || !actionAdContent) { if (actionToContinue) actionToContinue(); return false; }
-            pendingActionAfterAd = actionToContinue;
-            actionAdContent.innerHTML = '<p class="loading-indicator">Loading Ad...</p>';
-            if(actionAdContinueBtn) actionAdContinueBtn.style.display = 'none';
-            actionAdModal.classList.add('active');
-            try {
-                while (actionAdContent.firstChild) actionAdContent.removeChild(actionAdContent.firstChild);
-                const adContainer = document.createElement('div'); adContainer.id = 'adspot-' + Date.now();
-                const script1 = document.createElement('script'); script1.type = 'text/javascript';
-                script1.innerHTML = `atOptions={'key':'490fb1567684d6d65a607885aa44240c','format':'iframe','height':250,'width':300,'params':{}};`;
-                const script2 = document.createElement('script'); script2.type = 'text/javascript'; script2.src = '//www.highperformanceformat.com/490fb1567684d6d65a607885aa44240c/invoke.js'; script2.async = true;
-                adContainer.appendChild(script1); actionAdContent.appendChild(adContainer);
-                setTimeout(() => { adContainer.appendChild(script2); }, 50);
-                setTimeout(() => { if(actionAdContinueBtn) actionAdContinueBtn.style.display = 'inline-block'; const lp = actionAdContent.querySelector('.loading-indicator'); if(lp)lp.style.display='none';}, 3000);
-                return true;
-            } catch (scriptError) {
-                actionAdContent.innerHTML = '<p class="error-message">Error displaying ad.</p>';
-                setTimeout(() => closeActionAdModalAndContinue(), 2000);
-                return false;
-            }
-        }
-        function closeActionAdModal() { if (actionAdModal) actionAdModal.classList.remove('active'); }
-        function closeActionAdModalAndContinue() { closeActionAdModal(); if (pendingActionAfterAd && typeof pendingActionAfterAd === 'function') pendingActionAfterAd(); pendingActionAfterAd = null; }
-
-
-        function showMessage(id, msg, type = 'info', dur = 5000) {
-             const el = document.getElementById(id); if(!el) return;
-             el.innerHTML = msg; el.className = `message-area ${type}-message`; el.style.display = 'block';
-             if (!(type === 'info' && dur === 0) && id !== 'verification-message-area' && id !== 'auth-message-global' && dur > 0) {
-                 setTimeout(() => { if (el.innerHTML === msg) clearMessage(id); }, dur);
-             }
-        }
-        function clearMessage(id) { const el = document.getElementById(id); if(el) { el.innerHTML = ''; el.style.display = 'none'; el.className = 'message-area'; } }
-        function showAuthForm(name) {
-            clearMessage('login-message'); clearMessage('signup-message'); clearMessage('forgot-password-message');
-            if(loginFormEl) loginFormEl.style.display = name === 'login' ? 'block' : 'none';
-            if(signupFormEl) signupFormEl.style.display = name === 'signup' ? 'block' : 'none';
-            if(forgotPasswordFormEl) forgotPasswordFormEl.style.display = name === 'forgot' ? 'block' : 'none';
-            if(actionCodeFormEl) actionCodeFormEl.style.display = 'none'; // Hide action form
-            if(authContainer) authContainer.style.display = 'flex'; if(appContainer) appContainer.style.display = 'none';
-            if(authMessageGlobal) authMessageGlobal.style.display = 'none';
-        }
-        function formatTimeRemaining(ms) { if (ms <= 0) return "Available Now!"; const s = Math.ceil(ms/1000), h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60; return `Wait: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`; }
-        function togglePasswordVisibility(id, icon) { const i = document.getElementById(id); if(!i||!icon) return; i.type = i.type==='password'?'text':'password'; icon.classList.toggle('fa-eye'); icon.classList.toggle('fa-eye-slash'); }
-
-        function showLoadingOverlay() { if(loadingOverlay) { loadingOverlay.classList.remove('hidden'); if(loadingMusic && loadingMusic.readyState >= 3) loadingMusic.play().catch(e=>console.warn("Loading music failed:",e)); } }
-        function hideLoadingOverlay() { if(loadingOverlay) { loadingOverlay.classList.add('hidden'); if(loadingMusic) { loadingMusic.pause(); loadingMusic.currentTime = 0; } } }
-
-        let isVerifyingAuth = false, isCheckingUserStatus = false;
-        if (auth) { auth.onAuthStateChanged(user => {
-            detachAllListeners(); clearAllTimers(); isVerifyingAuth = false; isCheckingUserStatus = false;
-            if (!user) {
-                 // Check if there's an action code in the URL even when logged out
-                 if (!handleActionCodes()) {
-                    clearMessage('verification-message-area'); if(authMessageGlobal) authMessageGlobal.style.display = 'none';
-                    hideLoadingOverlay(); resetAppStateForLogout();
-                    if (appBackgroundMusic) { appBackgroundMusic.pause(); appBackgroundMusic.currentTime = 0; }
-                    updateMuteButtonIcon();
-                 }
-            } else {
-                 currentUser = user; isVerifyingAuth = true;
-                 if(authMessageGlobal && loadingOverlay.classList.contains('hidden')) showMessage('auth-message-global', 'Verifying account...', 'info', 0);
-                 user.reload().then(() => {
-                    currentUser = auth.currentUser; if(!currentUser) { hideLoadingOverlay(); resetAppStateForLogout(); return; }
-                    isVerifyingAuth = false;
-                    if (!currentUser.emailVerified && currentUser.providerData.some(p => p.providerId === 'password')) {
-                        hideLoadingOverlay(); handleUnverifiedUser(currentUser);
-                    } else {
-                        isCheckingUserStatus = true;
-                        if(authMessageGlobal && loadingOverlay.classList.contains('hidden')) showMessage('auth-message-global', 'Checking account status...', 'info', 0);
-                        checkUserStatusAndProceed(currentUser);
-                        if (appBackgroundMusic && !isAppMusicMuted && appBackgroundMusic.readyState >= 3) appBackgroundMusic.play().catch(e=>console.warn("App music failed:",e));
-                        updateMuteButtonIcon();
-                    }
-                 }).catch(err => {
-                     isVerifyingAuth = false; hideLoadingOverlay(); showMessage('auth-message-global', 'Error checking verification. Try again.', 'error', 0);
-                     if (auth.currentUser) auth.signOut(); else resetAppStateForLogout();
-                 });
-            }
-        }); }
-        
-        // --- START: NEW WELCOME NOTIFICATION FUNCTION ---
-        /**
-         * ব্যবহারকারী লগইন করলে একটি ওয়েলকাম নোটিফিকেশন দেখানোর চেষ্টা করে।
-         */
-        function showWelcomeNotification() {
-            // Check if the browser supports notifications
-            if (!("Notification" in window)) {
-                console.log("This browser does not support desktop notification");
-                return;
-            }
-
-            // Check the current permission status
-            if (Notification.permission === "granted") {
-                // If it's okay, let's create a notification
-                const displayName = userUsername || currentUser?.displayName || 'User';
-                new Notification(`Welcome back to TapTak, ${displayName}!`, {
-                    body: "Ready to earn some coins? Let's go!",
-                    icon: document.getElementById('appLogo').src || 'placeholder-logo.png' // Use app logo as icon
-                });
-            } else if (Notification.permission !== "denied") {
-                // Otherwise, we need to ask the user for permission
-                Notification.requestPermission().then(function (permission) {
-                    // If the user accepts, let's create a notification
-                    if (permission === "granted") {
-                        const displayName = userUsername || currentUser?.displayName || 'User';
-                        new Notification(`Welcome to TapTak, ${displayName}!`, {
-                            body: "You can now receive notifications from us.",
-                            icon: document.getElementById('appLogo').src || 'placeholder-logo.png'
-                        });
-                    }
-                });
-            }
-            // If permission is denied, we won't bother the user.
-        }
-        // --- END: NEW WELCOME NOTIFICATION FUNCTION ---
-
-        function handleUnverifiedUser(user) {
-            if(authContainer) authContainer.style.display = 'flex'; if(appContainer) appContainer.style.display = 'none'; if(authMessageGlobal) authMessageGlobal.style.display = 'none';
-            showAuthForm('login');
-            showMessage('verification-message-area', `Verify email: <strong>${user.email}</strong>. Check inbox/spam. <span id="resend-timer"></span><br><div id="resend-verification-container"><a onclick="resendVerificationEmail()">Resend email</a></div>`, 'info', 0);
-        }
-        function resendVerificationEmail() {
-            if (!auth || !auth.currentUser) {
-                const targetMsgArea = verificationMessageArea.style.display !== 'none' ? 'verification-message-area' : 'login-message';
-                showMessage(targetMsgArea, 'You need to be logged in to resend verification.', 'error');
-                return;
-            }
-            const targetMsgArea = verificationMessageArea.style.display !== 'none' ? 'verification-message-area' : 'login-message';
-            const resendLink = document.querySelector('#resend-verification-container a');
-            const resendTimerSpan = document.getElementById('resend-timer');
-            if (resendLink && resendLink.getAttribute('data-disabled') === 'true') {
-                 showMessage(targetMsgArea, 'Please wait before resending.', 'error', 3000);
-                return;
-            }
-            if(resendLink) {
-                resendLink.style.pointerEvents = 'none';
-                resendLink.setAttribute('data-disabled', 'true');
-                resendLink.style.opacity = '0.5';
-            }
-            // MODIFIED: Pass actionCodeSettings for custom URL
-            auth.currentUser.sendEmailVerification(actionCodeSettings)
-                .then(() => {
-                    showMessage(targetMsgArea, 'Verification email resent to your custom URL. Check your inbox.', 'success', 10000);
-                    let cooldown = 60;
-                    if(resendTimerSpan) resendTimerSpan.textContent = ` (wait ${cooldown}s)`;
-                    if(resendVerificationInterval) clearInterval(resendVerificationInterval);
-                    resendVerificationInterval = setInterval(() => {
-                        cooldown--;
-                        if (cooldown <= 0) {
-                            clearInterval(resendVerificationInterval);
-                            resendVerificationInterval = null;
-                            if(resendTimerSpan) resendTimerSpan.textContent = '';
-                            if(resendLink) {
-                                resendLink.style.pointerEvents = 'auto';
-                                resendLink.removeAttribute('data-disabled');
-                                resendLink.style.opacity = '1';
-                            }
-                        } else {
-                            if(resendTimerSpan) resendTimerSpan.textContent = ` (wait ${cooldown}s)`;
-                        }
-                    }, 1000);
-                })
-                .catch((error) => {
-                    showMessage(targetMsgArea, `Error sending email: ${error.message}`, 'error', 0);
-                    if(resendLink) {
-                         resendLink.style.pointerEvents = 'auto';
-                         resendLink.removeAttribute('data-disabled');
-                         resendLink.style.opacity = '1';
-                     }
-                });
-        }
-
-        function resetAppStateForLogout() {
-             currentUser = null; userCoins = 0; userReferralCode = null; userLastEarnedTimestamps = {};
-             hasEnteredReferral = false; userLastDailyBonusClaim = 0; userLastSpinClaim = 0;
-             userLastAdWatchClaim = 0; userCreatedAt = 0; userUsername = null;
-             activeTasksData = {}; appConfigData = {};
-             if(authContainer) authContainer.style.display = 'flex';
-             if(appContainer) appContainer.style.display = 'none';
-             if(authMessageGlobal) { authMessageGlobal.textContent = ''; authMessageGlobal.style.display = 'none'; }
-             if (coinBalanceElement) coinBalanceElement.textContent = '0';
-             if (withdrawCoinBalanceElement) withdrawCoinBalanceElement.textContent = '0';
-             if (tasksListElement) tasksListElement.innerHTML = '';
-             if (historyListElement) historyListElement.innerHTML = '';
-             if (bannerImageElement) bannerImageElement.src = 'placeholder-banner.png';
-             if (appLogoElement) appLogoElement.src = 'placeholder-logo.png';
-             if(welcomeMessageContainer) welcomeMessageContainer.style.display = 'none';
-             if(welcomeMessageElement) welcomeMessageElement.textContent = '';
-             ['settingsUsername', 'settingsUserEmail', 'settingsUserId'].forEach(id => {
-                const el = document.getElementById(id); if(el) el.textContent = 'Loading...';
-             });
-             clearMessage('verification-message-area');
-             showAuthForm('login');
-        }
-
-        function checkUserStatusAndProceed(user) {
-             if (!db || !user) { isCheckingUserStatus = false; hideLoadingOverlay(); return; }
-             db.ref(`users/${user.uid}`).once('value').then(s => {
-                 isCheckingUserStatus = false;
-                 const d = s.val();
-                 if (!d) { showMessage('auth-message-global', "Account data missing.", 'error', 0); hideLoadingOverlay(); if(auth) auth.signOut(); return; }
-                 if (d.isBlocked || d.isBanned) { let m = d.isBanned ? "Your account has been banned." : "Your account has been blocked."; showMessage('auth-message-global', m, 'error', 0); showAuthForm('login'); hideLoadingOverlay(); setTimeout(() => { if (auth.currentUser) auth.signOut(); }, 4000); } else {
-                     userCreatedAt = d.createdAt || 0;
-                     if(authMessageGlobal && loadingOverlay.classList.contains('hidden')) showMessage('auth-message-global', 'Loading user data...', 'info', 0);
-                     setupUserDataListener(currentUser.uid);
-                     setupAppConfigListener();
-                 }
-             }).catch(e => { isCheckingUserStatus = false; showMessage('auth-message-global', "Error checking account status.", 'error', 0); showAuthForm('login'); hideLoadingOverlay(); if(auth) auth.signOut(); });
-        }
-
-        function displayWelcomeMessage() {
-            if (welcomeMessageElement && welcomeMessageContainer && currentUser) {
-                const displayName = userUsername || currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
-                welcomeMessageElement.textContent = `Welcome, ${displayName}!`;
-                welcomeMessageContainer.style.display = 'block';
-                welcomeMessageElement.style.display = 'block';
-            } else if (welcomeMessageContainer && welcomeMessageElement) {
-                welcomeMessageContainer.style.display = 'none';
-                welcomeMessageElement.style.display = 'none';
-            }
-        }
-
-        function detachAllListeners() { detachUserDataListener(); detachTasksListener(); detachAppConfigListener(); detachHistoryListener(); }
-        function setupUserDataListener(userId) {
-            if (!db || !userId) return;
-            detachUserDataListener();
-            userRef = db.ref('users/' + userId);
-            let initialDataLoaded = false;
-            userDataListener = userRef.on('value', s => {
-                const d = s.val();
-                if (d) {
-                    const previousUserCoins = userCoins;
-                    userCoins = d.coins ?? 0; userReferralCode = d.referralCode ?? null; userLastEarnedTimestamps = d.lastEarnedTimestamps ?? {};
-                    hasEnteredReferral = d.hasEnteredReferralCode ?? false; userLastDailyBonusClaim = d.lastDailyBonusClaim ?? 0;
-                    userLastSpinClaim = d.lastSpinClaim ?? 0; userLastAdWatchClaim = d.lastAdWatchClaim ?? 0;
-                    userCreatedAt = d.createdAt ?? 0; userUsername = d.username ?? (currentUser.displayName || null);
-
-                    if (coinBalanceElement) {
-                        coinBalanceElement.textContent = userCoins;
-                        if(initialDataLoaded && userCoins !== previousUserCoins) { coinBalanceElement.classList.add('coin-updated-animation'); setTimeout(() => coinBalanceElement.classList.remove('coin-updated-animation'), 700); }
-                    }
-                    if (withdrawCoinBalanceElement) withdrawCoinBalanceElement.textContent = userCoins;
-                    if (referralLinkDisplay) referralLinkDisplay.textContent = userReferralCode || 'Generating...';
-                    if(settingsUserEmail) settingsUserEmail.textContent = currentUser?.email || 'N/A';
-                    if(settingsUserId) settingsUserId.textContent = currentUser?.uid || 'N/A';
-                    if(settingsUsername) settingsUsername.textContent = userUsername || 'Not Set';
-
-                    updateTaskButtonsStates(); updateReferralSectionVisibility(); updateDailyBonusButtonState();
-                    updateDailySpinButtonState(); updateAdButtonState(); calculateEstimatedCurrency(); displayWelcomeMessage();
-                    if (!initialDataLoaded) {
-                        hideLoadingOverlay(); if(authContainer) authContainer.style.display = 'none';
-                        if(appContainer) appContainer.style.display = 'flex'; if(authMessageGlobal) authMessageGlobal.style.display = 'none';
-                        showPage('page-home');
-                        initialDataLoaded = true;
-                        
-                        // --- START: CALL WELCOME NOTIFICATION ---
-                        showWelcomeNotification(); 
-                        // --- END: CALL WELCOME NOTIFICATION ---
-                        
-                        showActionAd(); // Show ad on app load
-                    }
-                } else { if (auth.currentUser && auth.currentUser.uid === userId) auth.signOut(); else resetAppStateForLogout(); }
-            }, e => {
-                if (coinBalanceElement) coinBalanceElement.textContent = 'Err'; hideLoadingOverlay();
-                showMessage('auth-message-global', `Error loading data: ${e.message}. Please reload.`, 'error', 0);
-                 if(authContainer) authContainer.style.display = 'flex'; if(appContainer) appContainer.style.display = 'none';
-                 showAuthForm('login'); if(auth.currentUser) auth.signOut();
-            });
-        }
-        function detachUserDataListener() { if (userRef && userDataListener) { userRef.off('value', userDataListener); userRef = null; userDataListener = null; } }
-
-        function loadTasks() {
-            if (!db || !currentUser) return; detachTasksListener();
-            tasksRef = db.ref('tasks').orderByChild('active').equalTo(true);
-            if(tasksListElement) tasksListElement.innerHTML = '<div class="loading-indicator">Loading tasks...</div>';
-            tasksListener = tasksRef.on('value', s => {
-                activeTasksData = s.val() || {}; if(tasksListElement) tasksListElement.innerHTML = '';
-                if (Object.keys(activeTasksData).length === 0) { if(tasksListElement) tasksListElement.innerHTML = '<p style="text-align:center; padding: 15px; color: #777;">No tasks available right now.</p>'; return; }
-                Object.keys(activeTasksData).forEach(id => {if(tasksListElement) tasksListElement.appendChild(createTaskCardElement(id, activeTasksData[id]))});
-                updateTaskButtonsStates();
-            }, e => { if(tasksListElement) tasksListElement.innerHTML = '<div class="error-message">Error loading tasks.</div>'; });
-        }
-        function detachTasksListener() { if (tasksRef && tasksListener) { tasksRef.off('value', tasksListener); tasksRef = null; tasksListener = null; } }
-
-        function setupAppConfigListener() {
-            if (!db) return; detachAppConfigListener(); appConfigRef = db.ref('appConfig');
-            appConfigListener = appConfigRef.on('value', s => {
-                appConfigData = s.val() || {};
-                if (bannerImageElement) bannerImageElement.src = appConfigData.bannerImageUrl || 'placeholder-banner.png';
-                if (appLogoElement) appLogoElement.src = appConfigData.appLogoUrl || 'placeholder-logo.png';
-                if (withdrawInfoElement) {
-                    const min = appConfigData.minWithdrawalAmount || 0, rate = appConfigData.tokenToCurrencyRate || 0, sym = appConfigData.currencySymbol || '$';
-                    let txt = `Minimum Withdrawal: ${min} Coins.`; if (rate > 0 && sym) txt += ` (${rate} Coins ≈ 1 ${sym})`;
-                    withdrawInfoElement.textContent = txt; calculateEstimatedCurrency();
-                    const minWInstEl = document.getElementById('minWithdrawalInstruction'); if(minWInstEl) minWInstEl.textContent = min || 1000;
-                }
-            }, e => console.error("AppConfig err:", e));
-        }
-        function detachAppConfigListener() { if (appConfigRef && appConfigListener) { appConfigRef.off('value', appConfigListener); appConfigRef = null; appConfigListener = null; } }
-
-        function loadHistory() {
-            if (!db || !currentUser) return; detachHistoryListener();
-            historyRef = db.ref('withdrawals').orderByChild('userId').equalTo(currentUser.uid);
-            if(historyListElement) historyListElement.innerHTML = '<div class="loading-indicator">Loading history...</div>';
-            historyListener = historyRef.on('value', s => {
-                if(historyListElement) historyListElement.innerHTML = ''; const w = s.val();
-                if (!w || Object.keys(w).length === 0) { if(historyListElement) historyListElement.innerHTML = '<p style="text-align: center; padding: 20px; color: #777;">No withdrawal history found.</p>'; return; }
-                const keys = Object.keys(w).sort((a, b) => (w[b].requestTimestamp || 0) - (w[a].requestTimestamp || 0));
-                keys.forEach(k => { if(historyListElement) historyListElement.appendChild(createHistoryItemElement(k, w[k])); });
-            }, e => { if(historyListElement) historyListElement.innerHTML = `<div class="error-message">Error loading history: ${e.message}. Check rules.</div>`; showMessage('history-message-area', `Error loading history: ${e.message}`, 'error'); });
-        }
-        function detachHistoryListener() { if (historyRef && historyListener) { historyRef.off('value', historyListener); historyRef = null; historyListener = null; } }
-
-        function createTaskCardElement(taskId, task) { const card = document.createElement('div'); card.className = 'task-card'; card.id = `task-${taskId}`; const requiresProof = task.requiresProof || false; const linkUrl = task.linkUrl || null; let actionButtonHtml = `<button class="earn-btn" id="earn-btn-${taskId}" onclick="earnCoins('${taskId}')">Earn ${task.reward || 0}</button>`; if (linkUrl) { actionButtonHtml = `<a href="${linkUrl}" target="_blank" class="earn-btn" style="text-decoration: none; display: inline-block;">Visit Link</a>`; if (requiresProof) { actionButtonHtml += `<div class="task-proof-upload"> <label for="proof-${taskId}">Upload Proof:</label> <input type="file" id="proof-${taskId}" accept="image/*"> <button class="earn-btn primary" style="font-size: 0.9em; padding: 6px 14px;" onclick="submitTaskProof('${taskId}')">Submit Proof</button> </div> <div id="task-message-${taskId}" class="message-area" style="font-size:0.8em; text-align:right;"></div>`; } } else if(requiresProof) { actionButtonHtml = `<div class="task-proof-upload"> <label for="proof-${taskId}">Upload Proof:</label> <input type="file" id="proof-${taskId}" accept="image/*"> <button class="earn-btn primary" style="font-size: 0.9em; padding: 6px 14px;" onclick="submitTaskProof('${taskId}')">Submit Proof</button> </div> <div id="task-message-${taskId}" class="message-area" style="font-size:0.8em; text-align:right;"></div>`; } card.innerHTML = `<div class="task-info"><span class="task-title">${task.title || 'N/A'}</span><span class="task-description">${task.description || ''}</span><div class="task-reward">Reward: <strong>${task.reward || 0} Coins ${requiresProof ? '(Proof Req.)' : ''}</strong></div></div><div class="task-action">${actionButtonHtml}<div class="timer-display" id="timer-task-${taskId}">${(linkUrl && !requiresProof) ? '' : ' '}</div></div>`; return card; }
-        function createHistoryItemElement(withdrawalId, item) {
-            const div = document.createElement('div'); const sc = `status-${item.status || 'unknown'}`; div.className = `history-item ${sc}`;
-            const rD = item.requestTimestamp ? new Date(item.requestTimestamp).toLocaleString() : 'N/A'; const pD = item.processedTimestamp ? new Date(item.processedTimestamp).toLocaleString() : '';
-            const dS = (item.accountDetails || '').length > 15 ? (item.accountDetails || '').substring(0, 15) + '...' : (item.accountDetails || 'N/A');
-            const cancelButtonHtml = item.status === 'pending' ? `<button class="earn-btn" style="background-color: #ffc107; color: #333; border-color: #ffc107; margin-top: 8px; padding: 5px 10px; font-size: 0.85em;" onclick="cancelWithdrawalRequest('${withdrawalId}')">Cancel Request</button>` : '';
-            div.innerHTML = `<div class="history-item-details"><span class="history-item-info">Method: ${item.method || 'N/A'}</span><span class="history-item-amount">Amount: ${item.amount || 0}</span></div><div class="history-item-details" style="font-size: 12px; color: #666;"><span title="${item.accountDetails || ''}">Details: ${dS}</span></div><div class="history-item-details"><span class="history-item-status ${sc}">${item.status || 'Unknown'}</span></div><div class="timestamp">Requested: ${rD}</div>${pD ? `<div class="timestamp">Processed: ${pD}</div>` : ''}${cancelButtonHtml}`; return div;
-        }
-
-        // --- MODIFIED signupUser FUNCTION ---
-        function signupUser() {
-            if (!auth || !db) return;
-            const uIn = document.getElementById('signup-username'), eIn = document.getElementById('signup-email'), pIn = document.getElementById('signup-password');
-            const u = uIn.value.trim(), e = eIn.value.trim(), p = pIn.value, msgId = 'signup-message'; clearMessage(msgId);
-            if (!u) { showMessage(msgId, "Please enter a username.", 'error'); return; } if (u.length < MIN_USERNAME_LENGTH) { showMessage(msgId, `Username must be at least ${MIN_USERNAME_LENGTH} characters.`, 'error'); return;}
-            if (!e) { showMessage(msgId, "Please enter an email.", 'error'); return; } if (p.length < 6) { showMessage(msgId, "Password must be at least 6 characters.", 'error'); return; }
-            showMessage(msgId, "Creating account...", 'info', 0);
-            auth.createUserWithEmailAndPassword(e, p).then(uc => { const user = uc.user;
-                return user.updateProfile({ displayName: u }).then(() => { const rc = generateReferralCode(user.uid);
-                    return db.ref('users/' + user.uid).set({ email:user.email, username:u, coins:0, isAdmin:false, isBlocked:false, isBanned:false, createdAt:firebase.database.ServerValue.TIMESTAMP, lastEarnedTimestamps:{}, referralCode:rc, hasEnteredReferralCode:false, referredBy:null, lastDailyBonusClaim:0, lastSpinClaim:0, lastAdWatchClaim:0 });
-                }).then(() => user.sendEmailVerification(actionCodeSettings) ) // Pass settings here
-                .then(() => {
-                    uIn.value = ''; eIn.value = ''; pIn.value = ''; clearMessage(msgId);
-                    showMessage('verification-message-area', `Account created! A verification link has been sent to <strong>${uc.user.email}</strong>. Please check your inbox/spam.`, 'success', 0);
-                    showAuthForm('login'); if (auth.currentUser) auth.signOut();
-                });
-            }).catch(err => { let m = `Signup failed: ${err.message}`; if(err.code==='auth/email-already-in-use')m="Email already registered.";else if(err.code==='auth/invalid-email')m="Invalid email.";else if(err.code==='auth/weak-password')m="Password too weak."; showMessage(msgId,m,'error'); });
-        }
-
-        function loginUser() {
-             if (!auth) return; const eIn = document.getElementById('login-email'), pIn = document.getElementById('login-password');
-             const e = eIn.value, p = pIn.value, msgId = 'login-message'; clearMessage(msgId); clearMessage('verification-message-area');
-             if (!e || !p) { showMessage(msgId, "Provide email and password.", 'error'); return; } showMessage(msgId, "Logging in...", 'info', 0);
-             auth.signInWithEmailAndPassword(e, p).then(uc => { eIn.value = ''; pIn.value = ''; clearMessage(msgId); }).catch(err => {
-                 clearMessage(msgId); let m = `Login failed: ${err.message}`;
-                 if (['auth/user-not-found','auth/wrong-password','auth/invalid-credential'].includes(err.code) || (err.message && err.message.toUpperCase().includes('INVALID_LOGIN_CREDENTIALS'))) m = "Incorrect email or password.";
-                 else if (err.code === 'auth/invalid-email') m = "Invalid email format."; else if (err.code === 'auth/user-disabled') m = "Account disabled."; else if (err.code === 'auth/too-many-requests') m = "Too many attempts. Try later.";
-                 showMessage(msgId, m, 'error');
-             });
-        }
-        function logoutUser() { if(auth && auth.currentUser) auth.signOut(); }
-        
-        // --- MODIFIED sendPasswordReset FUNCTION ---
-        function sendPasswordReset() {
-             if (!auth) return; const eIn = document.getElementById('forgot-email'), e = eIn.value, msgId = 'forgot-password-message'; clearMessage(msgId);
-             if (!e) { showMessage(msgId, "Enter email.", 'error'); return; } showMessage(msgId, "Sending reset email...", 'info', 0);
-             // Pass actionCodeSettings here
-             auth.sendPasswordResetEmail(e, actionCodeSettings).then(() => { 
-                showMessage(msgId, "Reset email sent! Check your inbox/spam for a link to reset your password on our site.", 'success', 10000); 
-                eIn.value = ''; 
-             }).catch(err => {
-                 let m = `Error: ${err.message}`; if (err.code === 'auth/user-not-found') m="No account with this email."; else if(err.code==='auth/invalid-email') m="Invalid email."; showMessage(msgId,m,'error');
-             });
-        }
-
-        function signInWithGoogle() {
-            if (!auth || !db) return; const provider = new firebase.auth.GoogleAuthProvider();
-            const msgId = loginFormEl.style.display==='block' ? 'login-message':'signup-message'; clearMessage('login-message');clearMessage('signup-message');clearMessage('verification-message-area');
-            showMessage(msgId, "Opening Google Sign-In...", 'info', 0);
-            auth.signInWithPopup(provider).then(res => { const user = res.user, isNew = res.additionalUserInfo.isNewUser; clearMessage(msgId);
-                if (isNew) {
-                    const rc = generateReferralCode(user.uid), du = user.displayName || user.email.split('@')[0];
-                    db.ref('users/' + user.uid).set({ email:user.email, username:du, coins:0, isAdmin:false, isBlocked:false, isBanned:false, createdAt:firebase.database.ServerValue.TIMESTAMP, lastEarnedTimestamps:{}, referralCode:rc, hasEnteredReferralCode:false, referredBy:null, lastDailyBonusClaim:0, lastSpinClaim:0, lastAdWatchClaim:0, provider:'google.com' })
-                    .catch(e => { showMessage(msgId,"Error setting up account.",'error'); if(auth.currentUser)auth.signOut(); });
-                } else {
-                     db.ref(`users/${user.uid}`).once('value').then(snap => { const ud = snap.val();
-                         if (ud && !ud.username && user.displayName) db.ref(`users/${user.uid}`).update({ username: user.displayName });
-                         else if (!ud) { const rc=generateReferralCode(user.uid),du=user.displayName||user.email.split('@')[0];db.ref('users/'+user.uid).set({email:user.email,username:du,coins:0,isAdmin:false,isBlocked:false,isBanned:false,createdAt:firebase.database.ServerValue.TIMESTAMP,lastEarnedTimestamps:{},referralCode:rc,hasEnteredReferralCode:false,referredBy:null,lastDailyBonusClaim:0,lastSpinClaim:0,lastAdWatchClaim:0,provider:'google.com'});}
-                     });
-                }
-            }).catch(err => { clearMessage(msgId); let m=`Google Sign-In failed: ${err.message}`; if(err.code==='auth/popup-closed-by-user')m="Cancelled.";else if(err.code==='auth/account-exists-with-different-credential')m="Email already used with Email/Password.";else if(err.code==='auth/popup-blocked')m="Popup blocked."; showMessage(msgId,m,'error',0); });
-        }
-
-        function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-            const page = document.getElementById(pageId);
-            if (page) {
-                page.classList.add('active-page'); window.scrollTo(0, 0);
-                if (pageId === 'page-settings') {
-                    clearMessage('changePasswordMessage'); clearMessage('deleteAccountMessage');
-                    if(settingsUsername) settingsUsername.textContent = userUsername || (currentUser?.displayName || 'Not Set');
-                    if(settingsUserEmail) settingsUserEmail.textContent = currentUser?.email || 'N/A';
-                    if(settingsUserId) settingsUserId.textContent = currentUser?.uid || 'N/A';
-                    ['settings-current-password', 'settings-new-password', 'settings-confirm-password'].forEach(id => { const inp = document.getElementById(id); if(inp) inp.value = ''; });
-                }
-                detachTasksListener(); detachHistoryListener();
-                if (pageId === 'page-earn') { loadTasks(); updateDailyBonusButtonState(); updateDailySpinButtonState(); initializeSpinWheelSegments(); }
-                else if (pageId === 'page-history') { loadHistory(); }
-            } else { document.getElementById('page-home').classList.add('active-page'); }
-        }
-        const menuDropdown = document.getElementById('dropdownMenu');
-        function toggleMenu(event) { event.stopPropagation(); if(menuDropdown) menuDropdown.classList.toggle('open'); }
-        function closeMenu() { if(menuDropdown) menuDropdown.classList.remove('open'); }
-        document.addEventListener('click', (event) => { const i = document.getElementById('menuIcon'); if (menuDropdown && menuDropdown.classList.contains('open') && !menuDropdown.contains(event.target) && event.target !== i) { closeMenu(); } });
-        if(currentYearElement) { currentYearElement.textContent = new Date().getFullYear(); }
-
-        function updateTaskButtonsStates() { if (!activeTasksData || !currentUser || !userLastEarnedTimestamps) return; const lastTs = userLastEarnedTimestamps; const now = Date.now(); Object.keys(activeTasksData).forEach(id => { const t = activeTasksData[id]; const btn = document.getElementById(`earn-btn-${id}`); const timerElId = `timer-task-${id}`; const timer = document.getElementById(timerElId); if (!btn || !timer) return; const last = lastTs[id] || 0; const cdMs = (t.cooldownMinutes || 0) * 60 * 1000; const rem = cdMs - (now - last); if (taskTimers[timerElId]) { clearInterval(taskTimers[timerElId]); delete taskTimers[timerElId]; } if (rem > 0 && !t.linkUrl) { btn.disabled = true; timer.classList.remove('ready', 'available'); timer.classList.add('claimed'); startVisualTimer(timerElId, rem); } else if (!t.linkUrl){ btn.disabled = false; timer.textContent = 'Available Now!'; timer.classList.remove('claimed'); timer.classList.add('ready', 'available'); } else { timer.textContent = ''; btn.disabled = false; } }); }
-        function startVisualTimer(timerElementId, timeRemaining) { const display = document.getElementById(timerElementId); if (!display) return; let remS = Math.ceil(timeRemaining / 1000); const btnIdMatch = timerElementId.match(/timer-(.*)/); const btnBaseId = btnIdMatch ? btnIdMatch[1].replace('task-','') : null; const associatedBtn = btnBaseId ? (document.getElementById(`earn-btn-${btnBaseId}`) || document.getElementById(`${btnBaseId}Btn`) || document.getElementById(`${btnBaseId}Card`)) : null; if(taskTimers[timerElementId]) clearInterval(taskTimers[timerElementId]); const intervalId = setInterval(() => { if (remS <= 0) { clearInterval(intervalId); delete taskTimers[timerElementId]; display.textContent = 'Available Now!'; display.classList.remove('claimed'); display.classList.add('ready', 'available'); if(associatedBtn && !(associatedBtn.tagName === 'A')) associatedBtn.disabled = false; if(timerElementId === 'adCooldownTimer' && adCooldownTimerElement) { adCooldownTimerElement.classList.add('ready'); adCooldownTimerElement.classList.remove('claimed'); } if(timerElementId === 'dailyBonusTimer' && dailyBonusBtn) { dailyBonusBtn.disabled = false; dailyBonusBtn.textContent = "Claim Bonus"; dailyBonusTimer.classList.remove('claimed'); dailyBonusTimer.classList.add('available'); } if(timerElementId === 'dailySpinTimer' && dailySpinBtn) { dailySpinBtn.disabled = false; dailySpinBtn.textContent = "Spin Now"; dailySpinTimer.classList.remove('claimed'); dailySpinTimer.classList.add('available');} } else { display.textContent = formatTimeRemaining(remS * 1000); remS--; if(associatedBtn && !(associatedBtn.tagName === 'A')) associatedBtn.disabled = true; display.classList.remove('ready', 'available'); display.classList.add('claimed'); } }, 1000); taskTimers[timerElementId] = intervalId; display.textContent = formatTimeRemaining(remS * 1000); if(associatedBtn && !(associatedBtn.tagName === 'A')) associatedBtn.disabled = true; display.classList.remove('ready', 'available'); display.classList.add('claimed'); }
-        function earnCoins(taskId) { if (!currentUser || !db || !activeTasksData[taskId] || activeTasksData[taskId].requiresProof) return; const task = activeTasksData[taskId]; const reward = task.reward || 0; const cooldown = task.cooldownMinutes || 0; const btn=document.getElementById(`earn-btn-${taskId}`); const timer=document.getElementById(`timer-task-${taskId}`); const msgId = `task-message-${taskId}`; if(!btn || !timer) return; btn.disabled = true; timer.textContent = 'Processing...'; timer.classList.remove('ready', 'available', 'claimed'); const tsRef=db.ref(`users/${currentUser.uid}/lastEarnedTimestamps/${taskId}`); const cRef=db.ref(`users/${currentUser.uid}/coins`); tsRef.once('value').then(s => { const last = s.val() || 0; const now = Date.now(); const cdMs = cooldown * 60 * 1000; if (now - last >= cdMs) { cRef.transaction(curr => (curr || 0) + reward, (e, comm, snap) => { if (e) { console.error("Tx fail:", e); showMessage(msgId, "Error claiming reward.", 'error', 3000); btn.disabled = false; } else if (comm) { tsRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => { updateTaskButtonsStates(); showMessage(msgId, `+${reward} Coins!`, 'success', 3000); }).catch(e => console.error("TS err:", e)); } else { btn.disabled = false; } }); } else { showMessage(msgId, "Cooldown active.", 'error', 3000); updateTaskButtonsStates(); } }).catch(e => { btn.disabled = false; timer.textContent = 'Error'; showMessage(msgId, "Error checking cooldown.", 'error', 3000); }); }
-        function submitTaskProof(taskId) { if (!currentUser || !db || !storage) return; const proofInput = document.getElementById(`proof-${taskId}`); const proofFile = proofInput ? proofInput.files[0] : null; const msgId = `task-message-${taskId}`; clearMessage(msgId); if (!proofFile || !proofFile.type.startsWith('image/')) { showMessage(msgId, 'Please select a valid image file as proof.', 'error'); return; } showMessage(msgId, 'Uploading proof...', 'info', 0); const fileExt = proofFile.name.split('.').pop(); const submissionId = db.ref('taskSubmissions').push().key; const path = `task_proofs/${currentUser.uid}/${submissionId}/proof.${fileExt}`; const storageRef = storage.ref(path); storageRef.put(proofFile).then(s => s.ref.getDownloadURL()).then(url => { const subData = { userId: currentUser.uid, taskId: taskId, proofUrl: url, status: 'pending', submittedAt: firebase.database.ServerValue.TIMESTAMP }; return db.ref(`taskSubmissions/${submissionId}`).set(subData); }).then(() => { showMessage(msgId, 'Proof submitted for review!', 'success', 5000); proofInput.value = ''; }).catch(e => { showMessage(msgId, `Proof submission failed: ${e.message}`, 'error'); }); }
-
-        function updateDailyBonusButtonState() { if (!dailyBonusBtn || !dailyBonusTimer) return; const now = Date.now(); const rem = ONE_DAY_MILLIS - (now - userLastDailyBonusClaim); clearMessage('dailyBonusMessage'); if (bonusTimerInterval) clearInterval(bonusTimerInterval); bonusTimerInterval = null; if (rem > 0) { dailyBonusBtn.disabled = true; dailyBonusBtn.textContent = "Claimed Today"; dailyBonusTimer.classList.remove('ready', 'available'); dailyBonusTimer.classList.add('claimed'); startVisualTimer('dailyBonusTimer', rem); } else { dailyBonusBtn.disabled = false; dailyBonusBtn.textContent = "Claim Bonus"; dailyBonusTimer.textContent = 'Available Now!'; dailyBonusTimer.classList.remove('claimed'); dailyBonusTimer.classList.add('ready', 'available'); } }
-        function claimDailyBonus() {
-            if (!currentUser || !db || !dailyBonusBtn || dailyBonusBtn.disabled) return;
-            const actualClaimBonus = () => {
-                const now = Date.now();
-                if (now - userLastDailyBonusClaim < ONE_DAY_MILLIS) {
-                    showMessage('dailyBonusMessage', "Bonus already claimed today.", 'error', 3000);
-                    if(dailyBonusBtn) dailyBonusBtn.disabled = false;
-                    return;
-                }
-                dailyBonusBtn.disabled = true; clearMessage('dailyBonusMessage'); showMessage('dailyBonusMessage', 'Claiming bonus...', 'info', 0);
-                const cRef = db.ref(`users/${currentUser.uid}/coins`); const lcRef = db.ref(`users/${currentUser.uid}/lastDailyBonusClaim`);
-                cRef.transaction(curr => (curr || 0) + DAILY_BONUS_AMOUNT, (e, comm, s) => {
-                    clearMessage('dailyBonusMessage');
-                    if (e) { showMessage('dailyBonusMessage', "Error claiming bonus.", 'error'); dailyBonusBtn.disabled = false; }
-                    else if (comm) { lcRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => { showMessage('dailyBonusMessage', `+${DAILY_BONUS_AMOUNT} Coins claimed!`, 'success', 5000); updateDailyBonusButtonState(); }).catch(e => console.error("Bonus TS err:", e)); }
-                    else { dailyBonusBtn.disabled = false; }
-                });
-            };
-            showActionAd(actualClaimBonus);
-        }
-
-        function initializeSpinWheelSegments() {
-            if (!spinWheelElement) return;
-            spinWheelElement.innerHTML = '';
-            spinWheelElement.style.setProperty('--num-segments', NUM_SPIN_SEGMENTS);
-
-            let conicGradientCSS = "conic-gradient(";
-            const segmentAngle = 360 / NUM_SPIN_SEGMENTS;
-
-            spinSegments.forEach((segment, index) => {
-                conicGradientCSS += `${segment.color} ${index * segmentAngle}deg ${(index + 1) * segmentAngle}deg`;
-                if (index < NUM_SPIN_SEGMENTS - 1) conicGradientCSS += ", ";
-
-                const segmentDiv = document.createElement('div');
-                segmentDiv.className = 'spin-segment';
-                const segmentMidRotation = (index * segmentAngle) + (segmentAngle / 2);
-                segmentDiv.style.transform = `rotate(${segmentMidRotation - 90}deg)`;
-
-                const textSpan = document.createElement('span');
-                textSpan.className = 'spin-segment-text';
-                textSpan.id = `spin-text-${index}`;
-                textSpan.textContent = segment.label;
-                const textOuterRotation = segmentAngle / 2;
-                const textTranslateY = -105;
-                textSpan.style.setProperty('--text-transform', `rotate(${textOuterRotation}deg) translateY(${textTranslateY}px) rotate(${-textOuterRotation}deg)`);
-                textSpan.style.transform = `var(--text-transform)`;
-
-                segmentDiv.appendChild(textSpan);
-                spinWheelElement.appendChild(segmentDiv);
-            });
-            conicGradientCSS += ")";
-            spinWheelElement.style.background = conicGradientCSS;
-        }
-        function updateDailySpinButtonState() { if (!dailySpinBtn || !dailySpinTimer) return; const now = Date.now(); const rem = ONE_DAY_MILLIS - (now - userLastSpinClaim); clearMessage('dailySpinMessage'); if(dailySpinResult) dailySpinResult.textContent = ''; if (spinTimerInterval) clearInterval(spinTimerInterval); spinTimerInterval = null; if (rem > 0) { dailySpinBtn.disabled = true; dailySpinBtn.textContent = "Spun Today"; dailySpinTimer.classList.remove('ready', 'available'); dailySpinTimer.classList.add('claimed'); startVisualTimer('dailySpinTimer', rem); } else { dailySpinBtn.disabled = false; dailySpinBtn.textContent = "Spin Now"; dailySpinTimer.textContent = 'Available Now!'; dailySpinTimer.classList.remove('claimed'); dailySpinTimer.classList.add('ready', 'available'); } }
-
-        function doDailySpin() {
-            if (!currentUser || !db || isSpinning || !dailySpinBtn || dailySpinBtn.disabled || !spinWheelElement) return;
-             const actualDoSpin = () => {
-                const now = Date.now();
-                if (now - userLastSpinClaim < ONE_DAY_MILLIS) {
-                    showMessage('dailySpinMessage', "Already spun today. Come back tomorrow!", 'error', 3000);
-                    if(dailySpinBtn) dailySpinBtn.disabled = false; isSpinning = false; return;
-                }
-                isSpinning = true; dailySpinBtn.disabled = true; spinWheelElement.classList.add('spinning');
-                if (dailySpinResult) dailySpinResult.textContent = 'Spinning...';
-                if (spinCenterDisplay) { spinCenterDisplay.classList.remove('show'); spinCenterDisplay.textContent = ''; }
-                clearMessage('dailySpinMessage');
-                document.querySelectorAll('.spin-segment-text.highlight').forEach(el => el.classList.remove('highlight'));
-
-                if (spinTickSound && typeof spinTickSound.play === 'function') {
-                    spinTickSound.currentTime = 0; spinTickSound.loop = true;
-                    spinTickSound.play().catch(e => console.warn("Spin tick sound failed:", e));
-                }
-
-                const winningSegmentIndex = Math.floor(Math.random() * NUM_SPIN_SEGMENTS);
-                const winningSegment = spinSegments[winningSegmentIndex]; const reward = winningSegment.reward;
-                const segmentAngle = 360 / NUM_SPIN_SEGMENTS;
-                const randomFullRotations = 360 * (Math.floor(Math.random() * 3) + 6);
-                const angleToWinningSegmentCenter = (winningSegmentIndex * segmentAngle) + (segmentAngle / 2);
-                const finalAngleOffset = 360 - angleToWinningSegmentCenter;
-                const randomFineTuneOffset = (Math.random() * (segmentAngle * 0.6)) - (segmentAngle * 0.3);
-                const newRotationTarget = randomFullRotations + finalAngleOffset + randomFineTuneOffset;
-                const totalRotation = currentRotation + newRotationTarget;
-
-                spinWheelElement.style.transition = 'transform 8s cubic-bezier(0.23, 1, 0.32, 1)';
-                spinWheelElement.style.transform = `rotate(${totalRotation}deg)`;
-                currentRotation = totalRotation % 360;
-
-                setTimeout(() => {
-                    if (spinTickSound) { spinTickSound.loop = false; spinTickSound.pause(); spinTickSound.currentTime = 0; }
-                    spinWheelElement.classList.remove('spinning'); isSpinning = false;
-                    const winningTextEl = document.getElementById(`spin-text-${winningSegmentIndex}`);
-                    if (winningTextEl) winningTextEl.classList.add('highlight');
-                    if (spinCenterDisplay) { spinCenterDisplay.textContent = reward > 0 ? `+${reward}` : '💔'; spinCenterDisplay.classList.add('show'); }
-                    if (winSound && reward > 0 && typeof winSound.play === 'function') { winSound.currentTime = 0; winSound.play().catch(e => console.warn("Win sound failed:", e)); }
-
-                    const cRef = db.ref(`users/${currentUser.uid}/coins`);
-                    const lcRef = db.ref(`users/${currentUser.uid}/lastSpinClaim`);
-                    if (reward > 0) {
-                        cRef.transaction(curr => (curr || 0) + reward, (e, comm, s) => {
-                            if (e) { showMessage('dailySpinMessage', "Error processing spin.", 'error'); if (dailySpinResult) dailySpinResult.textContent = 'Error!';}
-                            else if (comm) { if (dailySpinResult) dailySpinResult.textContent = `🎉 You won ${winningSegment.label}! 🎉`; lcRef.set(firebase.database.ServerValue.TIMESTAMP).catch(e => console.error("Spin TS err:", e));}
-                            else { if (dailySpinResult) dailySpinResult.textContent = 'Spin failed.';}
-                            updateDailySpinButtonState();
-                        });
-                    } else {
-                         if (dailySpinResult) dailySpinResult.textContent = `😕 ${winningSegment.label} 😕`;
-                         lcRef.set(firebase.database.ServerValue.TIMESTAMP).catch(e => console.error("Spin TS err for 0 reward:", e));
-                         updateDailySpinButtonState();
-                    }
-                }, 8000);
-            };
-            showActionAd(actualDoSpin);
-        }
-
-        function requestWithdrawal() {
-            if (!currentUser || !db) return;
-            const actualRequestWithdrawal = () => {
-                const msgId = 'withdrawMessage'; clearMessage(msgId); if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = true;
-                const amountInput = document.getElementById('withdrawAmount'), methodSelect = document.getElementById('withdrawMethod'), detailsInput = document.getElementById('accountDetails');
-                const amount = parseInt(amountInput.value), method = methodSelect.value, details = detailsInput.value.trim();
-                const minWd = appConfigData.minWithdrawalAmount || 1000, rate = appConfigData.tokenToCurrencyRate || 0;
-
-                if (isNaN(amount) || amount <= 0) { showMessage(msgId, "Please enter a valid amount.", 'error'); if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = false; return; }
-                if (!method) { showMessage(msgId, "Please select a withdrawal method.", 'error'); if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = false; return; }
-                if (!details) { showMessage(msgId, "Please enter your account details.", 'error'); if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = false; return; }
-                if (amount < minWd) { showMessage(msgId, `Minimum withdrawal amount is ${minWd} coins.`, 'error'); if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = false; return; }
-                if (amount > userCoins) { showMessage(msgId, "Insufficient coin balance.", 'error'); if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = false; return; }
-
-                let currencyAmount = 0; if(rate > 0) { currencyAmount = (amount / rate).toFixed(2); }
-                const wdData = { userId:currentUser.uid, userEmail:currentUser.email, amount:amount, method:method, accountDetails:details, status:"pending", requestTimestamp:firebase.database.ServerValue.TIMESTAMP, conversionRateSnapshot:rate, currencyAmountSnapshot:parseFloat(currencyAmount) };
-                showMessage(msgId, "Submitting withdrawal request...", 'info', 0);
-                const userCoinsRef = db.ref(`users/${currentUser.uid}/coins`);
-                userCoinsRef.transaction(currentCoins => {
-                    if (currentCoins === null) return; if (currentCoins < amount) return; return currentCoins - amount;
-                }, (error, committed, snapshot) => {
-                    if (error) { showMessage(msgId, "Error processing withdrawal. Please try again.", 'error'); if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = false; }
-                    else if (committed) {
-                        db.ref('withdrawals').push(wdData).then(() => {
-                            showMessage(msgId, "Withdrawal request submitted successfully!", 'success', 10000);
-                            if(amountInput)amountInput.value=''; if(methodSelect)methodSelect.value=''; if(detailsInput)detailsInput.value=''; if(estimatedCurrencyAmountSpan)estimatedCurrencyAmountSpan.textContent='';
-                            if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = false;
-                        }).catch(pushError => {
-                            showMessage(msgId, "Failed to submit request after balance deduction. Contact support!", 'error', 0);
-                            userCoinsRef.transaction(curr => (curr || 0) + amount); if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = false;
-                        });
-                    } else {
-                        showMessage(msgId, userCoins < amount ? "Withdrawal request failed: Insufficient balance." : "Withdrawal request could not be completed. Please try again.", 'error');
-                        if (submitWithdrawalBtn) submitWithdrawalBtn.disabled = false;
-                    }
-                });
-            };
-            showActionAd(actualRequestWithdrawal);
-        }
-        function cancelWithdrawalRequest(withdrawalId) {
-            if (!currentUser || !db) { showMessage('history-message-area', "Error: Not logged in.", 'error'); return; }
-            if (!confirm("Are you sure you want to cancel this withdrawal request? The coins will be refunded to your balance.")) return;
-            const msgId = 'history-message-area'; showMessage(msgId, "Cancelling request...", 'info', 0);
-            const withdrawalRef = db.ref(`withdrawals/${withdrawalId}`), userCoinsRef = db.ref(`users/${currentUser.uid}/coins`);
-            withdrawalRef.once('value').then(snapshot => { const wdData = snapshot.val();
-                if (!wdData) { showMessage(msgId, "Withdrawal request not found.", 'error'); return; }
-                if (wdData.userId !== currentUser.uid) { showMessage(msgId, "This is not your withdrawal request.", 'error'); return; }
-                if (wdData.status !== 'pending') { showMessage(msgId, "This request is not pending and cannot be cancelled.", 'error'); return; }
-                const amountToRefund = wdData.amount;
-                userCoinsRef.transaction(currentCoins => (currentCoins || 0) + amountToRefund, (error, committed, newCoinSnapshot) => {
-                    if (error) { showMessage(msgId, "Error refunding coins. Cancellation aborted. Contact support.", 'error'); }
-                    else if (committed) {
-                        withdrawalRef.remove().then(() => showMessage(msgId, "Withdrawal request cancelled and coins refunded.", 'success', 7000))
-                        .catch(removeError => showMessage(msgId, "Error cancelling request after refund. Coins were refunded. Contact support to resolve entry.", 'error', 0) );
-                    } else { showMessage(msgId, "Could not refund coins. Cancellation aborted.", 'error'); }
-                });
-            }).catch(err => showMessage(msgId, "Error checking withdrawal status.", 'error'));
-        }
-        function calculateEstimatedCurrency() { if (!estimatedCurrencyAmountSpan || !withdrawAmountInput || !appConfigData) return; const amount = parseInt(withdrawAmountInput.value); const rate = appConfigData.tokenToCurrencyRate || 0; const symbol = appConfigData.currencySymbol || '$'; if (!isNaN(amount) && amount > 0 && rate > 0 && symbol) { const estimated = (amount / rate).toFixed(2); estimatedCurrencyAmountSpan.textContent = `≈ ${estimated} ${symbol}`; } else { estimatedCurrencyAmountSpan.textContent = ''; } }
-        if(withdrawAmountInput) { withdrawAmountInput.addEventListener('input', calculateEstimatedCurrency); }
-        function generateReferralCode(userId) { const u = userId.substring(0, 4).toUpperCase(); const r = Math.random().toString(36).substring(2, 6).toUpperCase(); return `CZ${u}${r}`; }
-        function copyReferralCode() { const code = referralLinkDisplay ? referralLinkDisplay.textContent : null; if (navigator.clipboard && code && code !== 'Loading...' && code !== 'N/A') { navigator.clipboard.writeText(code).then(() => { showMessage('referralCodeMessage', 'Referral code copied!', 'success', 2000); }).catch(err => { showMessage('referralCodeMessage', 'Failed to copy code.', 'error'); }); } else { showMessage('referralCodeMessage', 'Cannot copy code.', 'error'); } }
-        function updateReferralSectionVisibility() { if(enterReferralSection) { if (hasEnteredReferral) { enterReferralSection.classList.add('hidden'); } else { enterReferralSection.classList.remove('hidden'); clearMessage('referralCodeMessage'); const input = document.getElementById('enteredReferralCodeInput'); if(input) input.value = ''; } } }
-        function submitReferralCode() { if (!currentUser || !db || hasEnteredReferral) { showMessage('referralCodeMessage', "Cannot submit referral code.", 'error'); return; } const input = document.getElementById('enteredReferralCodeInput'); const code = input ? input.value.trim().toUpperCase() : ''; const msgId = 'referralCodeMessage'; clearMessage(msgId); if (!code) { showMessage(msgId, "Please enter a referral code.", 'error'); return; } if (code === userReferralCode) { showMessage(msgId, "You cannot use your own referral code.", 'error'); return; } showMessage(msgId, "Checking referral code...", 'info', 0); db.ref('users').orderByChild('referralCode').equalTo(code).once('value', (s) => { clearMessage(msgId); if (s.exists()) { let refUid = null; s.forEach((c) => { refUid = c.key; }); if (refUid && refUid !== currentUser.uid) { db.ref(`users/${currentUser.uid}`).update({ referredBy: refUid, hasEnteredReferralCode: true }) .then(() => { showMessage(msgId, "Referral code accepted successfully!", 'success', 5000); updateReferralSectionVisibility(); }).catch((e) => showMessage(msgId, "Error saving referral information.", 'error')); } else { showMessage(msgId, "Invalid referral code entered.", 'error'); } } else { showMessage(msgId, "Invalid or non-existent referral code.", 'error'); } }).catch((e) => showMessage(msgId, "Error checking referral code.", 'error')); }
-
-        function copyUserInfo(elementId, event) {
-            const infoElement = document.getElementById(elementId); const buttonElement = event.target.closest('.copy-btn');
-            if (infoElement && navigator.clipboard && buttonElement) {
-                const textToCopy = infoElement.textContent;
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    const originalButtonText = buttonElement.innerHTML; buttonElement.innerHTML = '<i class="fas fa-check"></i> Copied!'; buttonElement.disabled = true;
-                    setTimeout(() => { buttonElement.innerHTML = originalButtonText; buttonElement.disabled = false; }, 1500);
-                }).catch(err => alert('Failed to copy text.'));
-            } else if (infoElement && buttonElement) {
-                const textArea = document.createElement("textarea"); textArea.value = infoElement.textContent; document.body.appendChild(textArea); textArea.select();
-                try { document.execCommand('copy'); const oBT=buttonElement.innerHTML;buttonElement.innerHTML='<i class="fas fa-check"></i> Copied!';buttonElement.disabled=true;setTimeout(()=>{buttonElement.innerHTML=oBT;buttonElement.disabled=false;},1500); } catch (err) { alert('Fallback: Failed to copy text.'); }
-                document.body.removeChild(textArea);
-            }
-        }
-        function changeUserPassword() {
-            if (!auth || !currentUser) return; const msgId='changePasswordMessage'; clearMessage(msgId);
-            const curPIn=document.getElementById('settings-current-password'),newPIn=document.getElementById('settings-new-password'),conPIn=document.getElementById('settings-confirm-password');
-            const curP=curPIn.value, newP=newPIn.value, conP=conPIn.value;
-            if(!curP||!newP||!conP){showMessage(msgId,"All password fields required.",'error');return;} if(newP.length<6){showMessage(msgId,"New password min 6 chars.",'error');return;}
-            if(newP!==conP){showMessage(msgId,"Passwords do not match.",'error');return;} if(newP===curP){showMessage(msgId,"New password must be different.",'error');return;}
-            showMessage(msgId,"Re-authenticating...",'info',0); const cred=firebase.auth.EmailAuthProvider.credential(currentUser.email,curP);
-            currentUser.reauthenticateWithCredential(cred).then(()=>{ showMessage(msgId,"Updating password...",'info',0);
-                currentUser.updatePassword(newP).then(()=>{ showMessage(msgId,"Password changed successfully!",'success',5000); curPIn.value='';newPIn.value='';conPIn.value='';
-                }).catch(updErr=>{ let m=`Error: ${updErr.message}`; if(updErr.code==='auth/weak-password')m="New password too weak.";else if(updErr.code==='auth/requires-recent-login')m="Requires recent login. Log out & in."; showMessage(msgId,m,'error'); });
-            }).catch(reauthErr=>{ let m=`Re-auth failed: ${reauthErr.message}`; if(reauthErr.code==='auth/wrong-password'||reauthErr.code==='auth/invalid-credential')m="Incorrect current password."; else if(reauthErr.code==='auth/user-mismatch')m="User mismatch."; else if(reauthErr.code==='auth/too-many-requests')m="Too many attempts."; showMessage(msgId,m,'error'); });
-        }
-        function deleteUserAccount() {
-            if (!currentUser||!db||!storage)return; const msgId='deleteAccountMessage';clearMessage(msgId);
-            const conf=prompt("DANGER! This is irreversible.\nType 'DELETE' to confirm:"); if(conf!=='DELETE'){showMessage(msgId,'Deletion cancelled.','info',5000);return;}
-            showMessage(msgId,'Deleting account...','info',0); const userId=currentUser.uid;
-            currentUser.delete().then(()=>db.ref(`users/${userId}`).remove()).then(()=>{ alert('Account deleted.'); })
-            .catch(err=>{let m=`Error: ${err.message}`;if(err.code==='auth/requires-recent-login')m='Requires recent login. Log out & in.'; showMessage(msgId,m,'error',0);});
-        }
-
-        function showAdModal() { // This is the original showAdModal for the "Show Ads" button
-            if(!currentUser||!db||!adModal||!adContent)return; const now=Date.now();clearMessage('adMessage');
-            if(now-(userLastAdWatchClaim||0)<AD_COOLDOWN_MILLIS){alert(`Wait ${formatTimeRemaining(AD_COOLDOWN_MILLIS-(now-(userLastAdWatchClaim||0)))} for next ad.`);return;}
-            adContent.innerHTML='<p class="loading-indicator">Loading Ad...</p>'; adModal.classList.add('active');
-            try{ while(adContent.firstChild)adContent.removeChild(adContent.firstChild); const s1=document.createElement('script');s1.type='text/javascript';s1.innerHTML=`atOptions={'key':'490fb1567684d6d65a607885aa44240c','format':'iframe','height':90,'width':728,'params':{}};`; const s2=document.createElement('script');s2.type='text/javascript';s2.src='//www.highperformanceformat.com/490fb1567684d6d65a607885aa44240c/invoke.js';s2.onerror=()=>{adContent.innerHTML='<p class="error-message">Failed to load ad.</p>';};s2.onload=()=>{const lp=adContent.querySelector('.loading-indicator');if(lp)lp.remove();}; adContent.appendChild(s1);setTimeout(()=>{adContent.appendChild(s2);},50);
-                const cRef=db.ref(`users/${currentUser.uid}/coins`),lcRef=db.ref(`users/${currentUser.uid}/lastAdWatchClaim`);
-                cRef.transaction(curr=>(curr||0)+AD_WATCH_REWARD,(e,comm,s)=>{ if(e)showMessage('adMessage',"Error applying ad reward.",'error'); else if(comm){lcRef.set(firebase.database.ServerValue.TIMESTAMP).then(()=>{showMessage('adMessage',`+${AD_WATCH_REWARD} Coins!`, 'success',5000);updateAdButtonState();});}});
-            }catch(err){adContent.innerHTML='<p class="error-message">Error displaying ad.</p>';}
-        }
-        function closeAdModal() { if(adModal)adModal.classList.remove('active'); if(adContent)setTimeout(()=>{adContent.innerHTML='';},300); }
-        function updateAdButtonState() { if(!currentUser||!adCooldownTimerElement)return; const now=Date.now(),rem=AD_COOLDOWN_MILLIS-(now-userLastAdWatchClaim); const card=document.getElementById('showAdsCard'); if(adTimerInterval)clearInterval(adTimerInterval);adTimerInterval=null; if(rem>0){if(card)card.style.opacity='0.7';adCooldownTimerElement.classList.remove('ready','available');adCooldownTimerElement.classList.add('claimed');startVisualTimer('adCooldownTimer',rem);}else{if(card)card.style.opacity='1';adCooldownTimerElement.textContent='Available Now!';adCooldownTimerElement.classList.remove('claimed');adCooldownTimerElement.classList.add('ready','available');}}
-
-        function toggleAppMusic() { if(!appBackgroundMusic)return; if(appBackgroundMusic.paused){appBackgroundMusic.play().then(()=>{isAppMusicMuted=false;updateMuteButtonIcon();}).catch(e=>console.warn("App music play failed:",e));}else{appBackgroundMusic.pause();isAppMusicMuted=true;updateMuteButtonIcon();}}
-        function updateMuteButtonIcon() { if(!muteButton)return; const icon=muteButton.querySelector('i'); if(isAppMusicMuted||!currentUser){icon.classList.remove('fa-volume-up');icon.classList.add('fa-volume-mute');}else{icon.classList.remove('fa-volume-mute');icon.classList.add('fa-volume-up');}}
-        
-        // --- START: NEW ACTION CODE HANDLER ---
-        /**
-         * Checks the URL for Firebase action codes (e.g., for password reset or email verification)
-         * and handles them.
-         * @returns {boolean} - True if an action code was found and is being handled, false otherwise.
-         */
-        function handleActionCodes() {
-            if (!auth || !actionCodeFormEl) return false;
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const mode = urlParams.get('mode');
-            const oobCode = urlParams.get('oobCode');
-            const apiKey = urlParams.get('apiKey');
-
-            if (!mode || !oobCode || !apiKey) {
-                return false; // No action code found
-            }
-            
-            // An action code is present, so show the action form and hide others
-            hideLoadingOverlay();
-            if(loginFormEl) loginFormEl.style.display = 'none';
-            if(signupFormEl) signupFormEl.style.display = 'none';
-            if(forgotPasswordFormEl) forgotPasswordFormEl.style.display = 'none';
-            actionCodeFormEl.style.display = 'block';
-
-            switch (mode) {
-                case 'resetPassword':
-                    handlePasswordReset(oobCode);
-                    break;
-                case 'verifyEmail':
-                    handleEmailVerification(oobCode);
-                    break;
-                default:
-                    // Unknown mode, show an error
-                    actionCodeFormEl.innerHTML = `<h2>Error</h2><p class="error-message">Invalid action. Please try again.</p><p class="auth-toggle-link"><a href="/">Go to Home</a></p>`;
-            }
-            return true; // Indicate that an action is being handled
-        }
-
-        function handlePasswordReset(code) {
-            auth.verifyPasswordResetCode(code).then(email => {
-                actionCodeFormEl.innerHTML = `
-                    <h2>Reset Password</h2>
-                    <p style="font-size:0.9em; color:#666; margin-bottom: 15px;">Enter a new password for <strong>${email}</strong>.</p>
-                    <div class="form-group">
-                        <label for="new-password-action">New Password</label>
-                        <input type="password" id="new-password-action" required>
-                        <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('new-password-action', this)"></i>
-                    </div>
-                    <button class="btn-login" id="confirm-reset-btn">Save New Password</button>
-                    <div id="action-message" class="message-area"></div>`;
-
-                document.getElementById('confirm-reset-btn').addEventListener('click', () => {
-                    const newPassword = document.getElementById('new-password-action').value;
-                    showMessage('action-message', 'Saving password...', 'info', 0);
-                    auth.confirmPasswordReset(code, newPassword).then(() => {
-                        clearMessage('action-message');
-                        actionCodeFormEl.innerHTML = `
-                            <h2>Success!</h2>
-                            <p class="success-message">Your password has been reset. You can now log in with your new password.</p>
-                            <p class="auth-toggle-link"><a onclick="window.location.href='/';">Go to Login</a></p>`;
-                    }).catch(err => {
-                        showMessage('action-message', `Error resetting password: ${err.message}`, 'error');
-                    });
-                });
-            }).catch(err => {
-                actionCodeFormEl.innerHTML = `<h2>Error</h2><p class="error-message">Invalid or expired password reset link. Please request a new one.</p><p class="auth-toggle-link"><a href="/">Go to Home</a></p>`;
-            });
-        }
-
-        function handleEmailVerification(code) {
-            actionCodeFormEl.innerHTML = `<h2>Verifying Email...</h2><p class="loading-indicator">Please wait.</p>`;
-            auth.applyActionCode(code).then(() => {
-                 actionCodeFormEl.innerHTML = `
-                    <h2>Email Verified!</h2>
-                    <p class="success-message">Your email address has been successfully verified.</p>
-                    <p class="auth-toggle-link"><a onclick="window.location.href='/';">Continue to Login</a></p>`;
-            }).catch(err => {
-                actionCodeFormEl.innerHTML = `<h2>Error</h2><p class="error-message">Invalid or expired verification link. Please try logging in to resend the link.</p><p class="auth-toggle-link"><a href="/">Go to Home</a></p>`;
-            });
-        }
-        // --- END: NEW ACTION CODE HANDLER ---
-
-        document.addEventListener('DOMContentLoaded', () => {
-            loadingMusic = document.getElementById('loading-music');
-            appBackgroundMusic = document.getElementById('app-background-music');
-            spinTickSound = document.getElementById('spin-tick-sound');
-            winSound = document.getElementById('win-sound');
-
-            if (muteButton) muteButton.addEventListener('click', toggleAppMusic);
-            updateMuteButtonIcon(); initializeSpinWheelSegments();
-            // Don't show loading overlay immediately if there's an action code
-            if (!new URLSearchParams(window.location.search).get('oobCode')) {
-                 if (loadingOverlay) showLoadingOverlay();
-            }
-
-            document.body.addEventListener('click', initializeAudio, { once: true });
-
-            if (typeof firebase === 'undefined' || !auth) {
-                hideLoadingOverlay(); showMessage('auth-message-global', 'Error loading services. Refresh.', 'error', 0);
-                if(authContainer) authContainer.style.display = 'flex';
-                if(loginFormEl) loginFormEl.style.display = 'none'; if(signupFormEl) signupFormEl.style.display = 'none'; if(forgotPasswordFormEl) forgotPasswordFormEl.style.display = 'none';
-            } else {
-                 if(authMessageGlobal) authMessageGlobal.style.display = 'none'; if(authContainer) authContainer.style.display = 'flex';
-                 if(appContainer) appContainer.style.display = 'none'; if(loginFormEl) loginFormEl.style.display = 'none';
-                 if(signupFormEl) signupFormEl.style.display = 'none'; if(forgotPasswordFormEl) forgotPasswordFormEl.style.display = 'none';
-                 // The onAuthStateChanged listener will handle the logic from here
+        // Load and display configuration
+        const configRef = db.ref('config');
+        configRef.on('value', (snapshot) => {
+            const config = snapshot.val();
+            if (config) {
+                document.getElementById('bot-name').value = config.BOT_NAME;
+                document.getElementById('bot-username').value = config.BOT_USERNAME;
+                document.getElementById('reward-ad').value = config.REWARD_PER_AD;
+                document.getElementById('ad-limit').value = config.BASE_AD_LIMIT;
+                document.getElementById('min-withdraw').value = config.MINIMUM_WITHDRAWAL_COINS;
+                document.getElementById('reward-referral').value = config.REWARD_PER_REFERRAL;
+                document.getElementById('max-referrals').value = config.MAX_REFERRALS;
             }
         });
-    </script>
 
+        // Save configuration
+        document.getElementById('save-config').addEventListener('click', () => {
+            const newConfig = {
+                BOT_NAME: document.getElementById('bot-name').value,
+                BOT_USERNAME: document.getElementById('bot-username').value,
+                REWARD_PER_AD: Number(document.getElementById('reward-ad').value),
+                BASE_AD_LIMIT: Number(document.getElementById('ad-limit').value),
+                MINIMUM_WITHDRAWAL_COINS: Number(document.getElementById('min-withdraw').value),
+                REWARD_PER_REFERRAL: Number(document.getElementById('reward-referral').value),
+                MAX_REFERRALS: Number(document.getElementById('max-referrals').value),
+            };
+            configRef.update(newConfig).then(() => {
+                const statusMsg = document.getElementById('status-message');
+                statusMsg.textContent = 'Settings saved successfully!';
+                statusMsg.style.color = 'green';
+                setTimeout(() => statusMsg.textContent = '', 3000);
+            });
+        });
+
+        // Load and display withdrawals
+        const withdrawalsRef = db.ref('withdrawals');
+        withdrawalsRef.on('value', (snapshot) => {
+            const withdrawals = snapshot.val();
+            const pendingBody = document.querySelector('#pending-table tbody');
+            const processedBody = document.querySelector('#processed-table tbody');
+            pendingBody.innerHTML = '';
+            processedBody.innerHTML = '';
+
+            if (!withdrawals) {
+                pendingBody.innerHTML = '<tr><td colspan="6">No pending withdrawals.</td></tr>';
+                return;
+            }
+            
+            // Sort by timestamp descending
+            const sortedWithdrawals = Object.values(withdrawals).sort((a,b) => b.timestamp - a.timestamp);
+
+            for (const item of sortedWithdrawals) {
+                const date = new Date(item.timestamp).toLocaleString();
+                if (item.status === 'Pending') {
+                    const row = `<tr>
+                        <td>${item.userId}</td>
+                        <td>@${item.username}</td>
+                        <td>${item.amount}</td>
+                        <td>${item.address}</td>
+                        <td>${date}</td>
+                        <td>
+                            <button class="btn btn-approve" onclick="approveWithdrawal('${item.id}', '${item.userId}')">Approve</button>
+                            <button class="btn btn-reject" onclick="rejectWithdrawal('${item.id}', '${item.userId}', ${item.amount})">Reject</button>
+                        </td>
+                    </tr>`;
+                    pendingBody.innerHTML += row;
+                } else {
+                     const row = `<tr>
+                        <td>${item.userId}</td>
+                        <td>@${item.username}</td>
+                        <td>${item.amount}</td>
+                        <td>${item.address}</td>
+                        <td>${date}</td>
+                        <td><span class="status status-${item.status.toLowerCase()}">${item.status}</span></td>
+                    </tr>`;
+                    processedBody.innerHTML += row;
+                }
+            }
+        });
+
+        async function approveWithdrawal(withdrawalId, userId) {
+            const updates = {};
+            updates[`/withdrawals/${withdrawalId}/status`] = 'Approved';
+            updates[`/users/${userId}/withdrawalHistory/${withdrawalId}/status`] = 'Approved';
+            await db.ref().update(updates);
+            alert('Withdrawal Approved!');
+        }
+
+        async function rejectWithdrawal(withdrawalId, userId, amount) {
+            // Refund coins to user using a transaction
+            const userCoinsRef = db.ref(`/users/${userId}/coins`);
+            await userCoinsRef.transaction((currentCoins) => {
+                return (currentCoins || 0) + amount;
+            });
+
+            const updates = {};
+            updates[`/withdrawals/${withdrawalId}/status`] = 'Rejected';
+            updates[`/users/${userId}/withdrawalHistory/${withdrawalId}/status`] = 'Rejected';
+            await db.ref().update(updates);
+            alert('Withdrawal Rejected and coins refunded!');
+        }
+    </script>
 </body>
 </html>
